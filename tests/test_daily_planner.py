@@ -31,7 +31,7 @@ TODAY = date(2026, 11, 3)
 
 @pytest.fixture
 async def session(tmp_path):
-    engine = build_engine(f"sqlite+aiosqlite:///{tmp_path/'p.db'}")
+    engine = build_engine(f"sqlite+aiosqlite:///{tmp_path / 'p.db'}")
     await init_db(engine)
     factory = make_session_factory(engine)
     async with factory() as s:
@@ -140,8 +140,10 @@ class TestHourlyPlanGeneration:
         from sqlalchemy import select
 
         items = (
-            await session.execute(select(DailyPlanItem).where(DailyPlanItem.plan_date == TODAY))
-        ).scalars().all()
+            (await session.execute(select(DailyPlanItem).where(DailyPlanItem.plan_date == TODAY)))
+            .scalars()
+            .all()
+        )
         assert items
         for item in items:
             assert item.custom_sentence_en
@@ -260,7 +262,11 @@ class TestValidation:
 
     def test_missing_correct_option_rejected(self) -> None:
         opts = [o.model_copy(update={"is_correct": False}) for o in self._card().options]
-        assert not _is_valid_card(self._card(options=opts, ))
+        assert not _is_valid_card(
+            self._card(
+                options=opts,
+            )
+        )
 
     def test_two_correct_options_rejected(self) -> None:
         opts = [o.model_copy(update={"is_correct": True}) for o in self._card().options]

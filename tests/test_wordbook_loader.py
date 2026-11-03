@@ -18,7 +18,7 @@ from src.agent_server.services.wordbook_loader import (  # noqa: E402
 
 @pytest.fixture
 async def session(tmp_path):
-    engine = build_engine(f"sqlite+aiosqlite:///{tmp_path/'t.db'}")
+    engine = build_engine(f"sqlite+aiosqlite:///{tmp_path / 't.db'}")
     await init_db(engine)
     factory = make_session_factory(engine)
     async with factory() as s:

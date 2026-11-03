@@ -48,9 +48,7 @@ class OpenAICompatibleLLMProvider(TextLLMProvider):
         response_model: type[T],
         temperature: float | None = None,
     ) -> T:  # type: ignore[type-var]
-        schema_json = json.dumps(
-            response_model.model_json_schema(), ensure_ascii=False, indent=2
-        )
+        schema_json = json.dumps(response_model.model_json_schema(), ensure_ascii=False, indent=2)
         strict_system = (
             f"{system_prompt}\n\n"
             "## 输出格式硬约束\n"

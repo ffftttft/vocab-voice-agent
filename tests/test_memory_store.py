@@ -62,13 +62,22 @@ class TestAppendRecentEvents:
         assert store.append_recent_events(["", "   "], today=date(2026, 11, 5)) == 0
 
     def test_preserves_user_written_sections(self, store: MemoryStore) -> None:
-        original = store.read_profile()
+        """用户手写的内容必须原样保留。"""
+        import re
+
+        original = re.sub(r"<!--.*?-->", "", store.read_profile(), flags=re.DOTALL)
         store.append_recent_events(["新事件B"], today=date(2026, 11, 5))
         updated = store.read_profile()
-        # 原有身份背景章节必须原样保留
         for line in original.splitlines():
-            if line.strip() and "近期动态" not in line and not line.startswith("<!--"):
+            if line.strip():
                 assert line in updated
+
+    def test_strips_format_comments_on_write(self, store: MemoryStore) -> None:
+        """模板里的示例注释是一次性说明，追加真实内容后应被清理，
+        否则多行注释中形如 '- ...' 的示例行会污染后续去重判断。"""
+        assert "<!--" in store.read_profile()
+        store.append_recent_events(["真实事件"], today=date(2026, 11, 5))
+        assert "<!--" not in store.read_profile()
 
     def test_creates_section_if_missing(self, tmp_path: Path) -> None:
         s = MemoryStore(tmp_path)

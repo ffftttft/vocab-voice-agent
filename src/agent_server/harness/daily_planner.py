@@ -390,9 +390,7 @@ class DailyPlanner:
                 try:
                     result = await self.llm.generate_structured(
                         system_prompt=system,
-                        user_prompt=CARD_USER.format(
-                            today=plan_date.isoformat(), words=listing
-                        ),
+                        user_prompt=CARD_USER.format(today=plan_date.isoformat(), words=listing),
                         response_model=WordCardBatch,
                     )
                 except Exception:  # noqa: BLE001

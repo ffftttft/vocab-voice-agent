@@ -45,6 +45,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+    "B008", # FastAPI 的 Depends()/File() 必须写在参数默认值里
+]
 
 [tool.mypy]
 python_version = "3.12"

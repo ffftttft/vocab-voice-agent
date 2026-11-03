@@ -193,10 +193,15 @@ from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 
+
 class TextLLMProvider(ABC):
     @abstractmethod
     async def generate_structured(
-        self, system_prompt: str, user_prompt: str, response_model: Type[T], temperature: float | None = None
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_model: Type[T],
+        temperature: float | None = None,
     ) -> T:
         """返回严格符合 Pydantic Schema 的结构化对象（兼容 JSON Mode / response_format）"""
 
@@ -348,8 +353,9 @@ class TextLLMProvider(ABC):
 
    scheduler = Scheduler(
        desired_retention=0.90,  # 90% 目标记忆保留率
-       enable_fuzzing=True      # 开启微小随机离散，防止同一天学习的词未来全部扎堆在同一天到期
+       enable_fuzzing=True,  # 开启微小随机离散，防止同一天学习的词未来全部扎堆在同一天到期
    )
+
 
    def record_card_review(db_card: FSRSCardORM, rating_int: int) -> FSRSCardORM:
        card = Card.from_dict(db_card.fsrs_card_json) if db_card.fsrs_card_json else Card()

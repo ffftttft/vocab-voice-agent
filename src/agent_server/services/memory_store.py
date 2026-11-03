@@ -45,7 +45,11 @@ class MemoryStore:
                 self.profile_path.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
             else:
                 self.profile_path.write_text(
-                    f"{PROFILE_HEADER}\n\n## 身份背景\n\n## 学习偏好\n\n"
+                    f"{PROFILE_HEADER}\n\n"
+                    "## 身份背景\n\n"
+                    "<!-- 在这里填写你的职业、正在做的项目、英语水平 -->\n\n"
+                    "## 学习偏好\n\n"
+                    "<!-- 你偏好的例句风格 -->\n\n"
                     f"{RECENT_SECTION}\n\n",
                     encoding="utf-8",
                 )
@@ -94,7 +98,9 @@ class MemoryStore:
             return 0
         day = (today or date.today()).isoformat()
         content = self.read_profile()
-        lines = content.splitlines()
+        # 先剥离 HTML 注释再做任何解析：
+        # 模板里的多行示例注释中有一行以 "- " 开头，若不先剥离会被误判成已存在事件。
+        lines = _strip_html_comments(content).splitlines()
 
         # 找 `## 近期动态` 章节范围
         start = None
@@ -110,7 +116,12 @@ class MemoryStore:
                 if lines[j].startswith("## "):
                     section_end = j
                     break
-            existing = {ln.strip() for ln in lines[start + 1 : section_end]}
+            # 只把真正的 bullet 当作已存在内容。
+            # 模板里的 HTML 注释（<!-- 示例 ... -->）是给人看的格式说明，
+            # 若参与去重会导致「示例文本」把真实事件误判为重复。
+            existing = {
+                ln.strip() for ln in lines[start + 1 : section_end] if ln.strip().startswith("- ")
+            }
 
         added = 0
         new_lines = []
@@ -147,9 +158,7 @@ class MemoryStore:
         return added
 
     # ---- Compaction 用：合并错误病历 ----
-    def merge_error_patterns(
-        self, pronunciation: list[str], grammar: list[str]
-    ) -> dict:
+    def merge_error_patterns(self, pronunciation: list[str], grammar: list[str]) -> dict:
         """把新错误按类别合并进病历，去重并保留 Top N。返回统计。"""
         content = self.read_errors()
 
@@ -174,7 +183,8 @@ class MemoryStore:
 
         added = 0
         new_bullets = []
-        existing_text = content
+        # 去重只用 bullet 行和正文，排除 HTML 注释中的示例
+        existing_text = _strip_html_comments(content)
         for item in items:
             text = item.strip()
             if not text:
@@ -232,3 +242,8 @@ class MemoryStore:
         drop = set(bullets[: len(bullets) - limit])
         kept = [ln for i, ln in enumerate(lines) if i not in drop]
         return "\n".join(kept).rstrip() + "\n"
+
+
+def _strip_html_comments(text: str) -> str:
+    """移除 HTML 注释，避免模板里的示例文字干扰去重判断。"""
+    return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
