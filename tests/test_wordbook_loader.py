@@ -67,12 +67,12 @@ class TestParseCSV:
         assert entries[0]["word"] == "部署"
 
     def test_parses_pipe_separated_tags(self) -> None:
-        raw = "word,topic_tags\ndeploy,tech_dev|workplace_comm\n".encode()
+        raw = b"word,topic_tags\ndeploy,tech_dev|workplace_comm\n"
         entries = parse_wordbook(raw, "b.csv")
         assert entries[0]["topic_tags"] == ["tech_dev", "workplace_comm"]
 
     def test_rejects_unknown_tags(self) -> None:
-        raw = "word,topic_tags\ndeploy,not_a_real_tag\n".encode()
+        raw = b"word,topic_tags\ndeploy,not_a_real_tag\n"
         assert parse_wordbook(raw, "b.csv")[0]["topic_tags"] == []
 
 

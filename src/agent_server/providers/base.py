@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 

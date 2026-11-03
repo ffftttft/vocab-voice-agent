@@ -12,7 +12,7 @@ SPEC 5.1 Step 2 写的是 `WHERE fsrs_cards.state == 0` 来挑新词，但 py-fs
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -249,7 +249,7 @@ async def upcoming_due_counts(
     user_id: str = DEFAULT_USER_ID,
 ) -> list[dict]:
     """未来 N 天的复习压力分布（首页柱状图）。"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     rows = await session.execute(
         select(FSRSCard.due).where(
             FSRSCard.user_id == user_id,
@@ -262,7 +262,7 @@ async def upcoming_due_counts(
         if due is None:
             continue
         if due.tzinfo is None:
-            due = due.replace(tzinfo=timezone.utc)
+            due = due.replace(tzinfo=UTC)
         delta = (due.date() - now.date()).days
         if 0 <= delta < days:
             buckets[delta] += 1

@@ -1,12 +1,12 @@
 import sys
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.agent_server.db.models import FSRSCard, Word  # noqa: E402
+from src.agent_server.db.models import FSRSCard  # noqa: E402
 from src.agent_server.db.repos import (  # noqa: E402
     add_words_with_cards,
     count_cards_by_state,
@@ -31,7 +31,11 @@ async def session(tmp_path):
 
 def _entries(n: int, prefix: str = "w") -> list[dict]:
     return [
-        {"word": f"{prefix}{i}", "phonetic_us": f"/{prefix}{i}/", "pos_defs": [{"pos": "v.", "def": f"释义{i}"}]}
+        {
+            "word": f"{prefix}{i}",
+            "phonetic_us": f"/{prefix}{i}/",
+            "pos_defs": [{"pos": "v.", "def": f"释义{i}"}],
+        }
         for i in range(n)
     ]
 
@@ -79,7 +83,16 @@ class TestNewWordSelection:
 
         card = await session.get(FSRSCard, words[0].id)
         snap, fields = apply_rating(None, 3)
-        for key in ("state", "step", "stability", "difficulty", "due", "last_review", "fsrs_card_json"):
+        fields_to_copy = (
+            "state",
+            "step",
+            "stability",
+            "difficulty",
+            "due",
+            "last_review",
+            "fsrs_card_json",
+        )
+        for key in fields_to_copy:
             setattr(card, key, fields[key])
         card.reps = 1
         await session.commit()
@@ -102,7 +115,7 @@ class TestDueReviewSelection:
         card.difficulty = 5.0
         card.state = 2
         card.last_review = None
-        card.due = __import__("datetime").datetime.now(__import__("datetime").timezone.utc) - timedelta(days=1)
+        card.due = datetime.now(UTC) - timedelta(days=1)
         await session.commit()
 
         due = await get_due_review_words(session, 10)

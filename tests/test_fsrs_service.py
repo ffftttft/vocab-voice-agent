@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -80,7 +80,7 @@ class TestApplyRating:
         for _ in range(3):
             snap, fields = apply_rating(snap, RATING_GOOD)
         assert fields["state"] == 2  # Review
-        assert fields["due"] > datetime.now(timezone.utc)
+        assert fields["due"] > datetime.now(UTC)
 
     def test_again_from_review_goes_to_relearning(self) -> None:
         snap = None
@@ -90,7 +90,7 @@ class TestApplyRating:
         assert fields["state"] == 3  # Relearning
 
     def test_due_increases_with_better_rating(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         _, hard = apply_rating(None, RATING_HARD, now=now)
         _, easy = apply_rating(None, RATING_EASY, now=now)
         assert easy["due"] >= hard["due"]
@@ -112,13 +112,13 @@ class TestApplyRating:
         assert restored.stability == snap["stability"]
 
     def test_last_review_uses_utc(self) -> None:
-        now = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 11, 3, 12, 0, tzinfo=UTC)
         _, fields = apply_rating(None, RATING_GOOD, now=now)
         assert fields["last_review"] == now
         assert fields["last_review"].tzinfo is not None
 
     def test_due_respects_supplied_now(self) -> None:
-        now = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 11, 3, 12, 0, tzinfo=UTC)
         _, fields = apply_rating(None, RATING_GOOD, now=now)
         assert fields["due"] >= now
         assert fields["due"] < now + timedelta(days=365)

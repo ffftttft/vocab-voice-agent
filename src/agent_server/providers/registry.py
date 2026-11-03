@@ -10,8 +10,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from ..config import AppConfig, ModelStageConfig
 from .base import ProviderError, RealtimeVoiceProvider, TextLLMProvider, TTSProvider

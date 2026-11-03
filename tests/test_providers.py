@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.agent_server.config import AppConfig, ModelStageConfig, ModelsConfig  # noqa: E402
+from src.agent_server.config import AppConfig, ModelsConfig, ModelStageConfig  # noqa: E402
 from src.agent_server.providers.base import ProviderError  # noqa: E402
 from src.agent_server.providers.llm.openai_compat import (  # noqa: E402
     OpenAICompatibleLLMProvider,

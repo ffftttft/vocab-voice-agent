@@ -11,9 +11,10 @@ import io
 import json
 from pathlib import Path
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..db.models import DEFAULT_USER_ID
 from ..db.repos import add_words_with_cards
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # SPEC 5.1 规定的场景标签枚举池
 TOPIC_POOL = [

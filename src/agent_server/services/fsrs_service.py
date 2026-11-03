@@ -19,9 +19,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from fsrs import Card, Rating, Scheduler, State
+from fsrs import Card, Rating, Scheduler
 
 __all__ = [
     "DEFAULT_SCHEDULER",
@@ -92,7 +92,7 @@ def apply_rating(
         raise ValueError(f"rating must be 1..4, got {rating_int}")
 
     sched = scheduler or DEFAULT_SCHEDULER
-    review_dt = now or datetime.now(timezone.utc)
+    review_dt = now or datetime.now(UTC)
 
     card = Card.from_dict(card_snapshot) if card_snapshot else Card()
     updated, review_log = sched.review_card(card, Rating(rating_int), review_dt)
