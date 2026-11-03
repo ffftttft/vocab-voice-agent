@@ -51,15 +51,25 @@ VOICE_API_KEY=...          # 阿里百炼
 
 或在「设置 → 词书」上传。
 
-### 4. 运行
+### 4. 构建前端（首次必需）
+
+前端构建产物不入库，全新克隆需要先构建一次：
+
+```bash
+cd web && pnpm install && pnpm build && cd ..
+```
+
+### 5. 运行
 
 ```bash
 uv run uvicorn src.agent_server.main:app --reload --port 8000
 ```
 
-打开 <http://127.0.0.1:8000>。
+打开 <http://127.0.0.1:8000>。若看到「前端尚未构建」提示，回到第 4 步。
 
-### 5. 手机真机测试
+> 只用 API 不建前端也可以：文档在 <http://127.0.0.1:8000/docs>。
+
+### 6. 手机真机测试
 
 手机浏览器只在 HTTPS 下给麦克风权限。没有域名时用 cloudflared 临时隧道：
 
@@ -67,7 +77,7 @@ uv run uvicorn src.agent_server.main:app --reload --port 8000
 cloudflared tunnel --url http://127.0.0.1:8000
 ```
 
-### 6. 部署
+### 7. 部署
 
 ```bash
 cp .env.example .env   # 填好

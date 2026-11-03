@@ -106,6 +106,24 @@ def _mount_frontend(app: FastAPI, data_dir: Path) -> None:
     candidates = [project_root / "web" / "dist", project_root / "web_dist"]
     dist = next((c for c in candidates if (c / "index.html").exists()), None)
     if dist is None:
+        # 前端产物不入库（构建产物），全新克隆需要先 cd web && pnpm build
+        @app.get("/", include_in_schema=False)
+        async def _no_frontend():  # type: ignore[no-untyped-def]
+            from fastapi.responses import HTMLResponse
+
+            return HTMLResponse(
+                "<html><body style='font-family:system-ui;padding:40px;line-height:1.8;"
+                "background:#0a0e14;color:#e8edf5;max-width:640px;margin:0 auto'>"
+                "<h2>前端尚未构建</h2>"
+                "<p>API 已正常运行，但没有找到前端静态产物。</p>"
+                "<p>请执行：</p>"
+                "<pre style='background:#1a2130;padding:14px;border-radius:8px'>"
+                "cd web &amp;&amp; pnpm install &amp;&amp; pnpm build</pre>"
+                "<p>然后刷新本页。API 文档在 <a style='color:#4f8cff' href='/docs'>/docs</a>。</p>"
+                "</body></html>",
+                status_code=200,
+            )
+
         return
 
     assets = dist / "assets"
