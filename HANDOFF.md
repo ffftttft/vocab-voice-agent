@@ -130,20 +130,24 @@ language/
 │   │   ├── base.py           # ✅ 三大抽象接口
 │   │   ├── registry.py       # ✅ 热切换工厂
 │   │   ├── llm/openai_compat.py   # ✅ 结构化生成 + 自愈重试
-│   │   ├── voice/            # ⬜ M4
+│   │   ├── voice/qwen_omni.py     # ✅ DashScope 协议适配
 │   │   └── tts/edge_tts_impl.py   # ✅ sha256 磁盘缓存
 │   ├── harness/
-│   │   ├── daily_planner.py       # ⬜ 下一步
-│   │   ├── voice_orchestrator.py  # ⬜ M4
-│   │   ├── hint_streamer.py       # ⬜ M5
-│   │   └── memory_compactor.py    # ⬜ M5
+│   │   ├── daily_planner.py       # ✅ 组局引擎
+│   │   ├── voice_orchestrator.py  # ✅ 滑动窗口/Tool/节奏
+│   │   ├── hint_streamer.py       # ✅ 按需 SSE
+│   │   └── memory_compactor.py    # ✅ 记忆压缩
 │   ├── services/
 │   │   ├── fsrs_service.py   # ✅ 评级映射 + 状态流转
 │   │   ├── memory_store.py   # ✅ 追加式 Markdown 记忆
 │   │   └── wordbook_loader.py# ✅ JSON/CSV 导入
-│   └── api/                  # ⬜ M3
-├── tests/                    # ✅ 83 个测试
-└── web/                      # ⬜ M3/M6
+│   ├── services/study_service.py # ✅ 背词状态机
+│   └── api/                  # ✅ study/tts/voice/admin
+├── tests/                    # ✅ 247 个测试
+├── web/                      # ✅ React H5 四视图
+├── Dockerfile                # ✅ 多阶段构建
+├── docker-compose.yml        # ✅ App + Caddy
+└── Caddyfile                 # ✅ 自动 HTTPS
 ```
 
 ---
@@ -159,8 +163,11 @@ uv run pytest tests/test_fsrs_service.py -v   # 单文件
 uv run ruff check .                  # 静态检查
 uv run ruff format .                 # 格式化
 
-# 开发服务器（M3 后可用）
+# 开发服务器
 uv run uvicorn src.agent_server.main:app --reload --port 8000
+
+# 前端开发（另开终端）
+cd web && pnpm install && pnpm dev
 
 # 生产依赖验证（部署前）
 uv sync --frozen --no-dev --no-install-project
@@ -185,9 +192,12 @@ uv sync --frozen --no-dev --no-install-project
 
 ## 接手后的第一步
 
-1. `uv sync && uv run pytest -q` —— 确认 83 测试全绿
-2. 读 `STATUS.md` 的「下一步具体做什么」
-3. 开干
+1. `uv sync && uv run pytest -q` —— 确认 247 测试全绿
+2. 读 `STATUS.md` 的「剩余工作」
+3. 若用户已提供 API Key：填 `.env`，按 STATUS.md 的验收清单实测
+
+**当前代码已全部完成。剩下的是用真实 Key 做验收，不是继续写功能。**
+若用户要求新功能，先读设计文档确认它是否与既有裁决冲突。
 
 ---
 

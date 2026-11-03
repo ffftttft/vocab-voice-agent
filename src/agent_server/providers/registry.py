@@ -17,9 +17,17 @@ from ..config import AppConfig, ModelStageConfig
 from .base import ProviderError, RealtimeVoiceProvider, TextLLMProvider, TTSProvider
 from .llm.openai_compat import OpenAICompatibleLLMProvider
 from .tts.edge_tts_impl import EdgeTTSProvider
+from .voice.qwen_omni import QwenOmniRealtimeAdapter
 
 # 已注册的 voice 实现。MVP 只实现 qwen_omni（SPEC 允许备选后置）
-_VOICE_FACTORIES: dict[str, Callable[[ModelStageConfig], RealtimeVoiceProvider]] = {}
+_VOICE_FACTORIES: dict[str, Callable[[ModelStageConfig], RealtimeVoiceProvider]] = {
+    "qwen_omni": lambda cfg: QwenOmniRealtimeAdapter(
+        ws_url=cfg.ws_url,
+        api_key=cfg.api_key,
+        model_name=cfg.model_name or "qwen-omni-turbo-realtime",
+        voice_id=cfg.voice_id or "Chelsie",
+    ),
+}
 # 已注册的 tts 实现
 _TTS_FACTORIES: dict[str, Callable[[ModelStageConfig, Path], TTSProvider]] = {
     "edge_tts": lambda cfg, cache_dir: EdgeTTSProvider(

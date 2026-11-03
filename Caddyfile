@@ -1,0 +1,20 @@
+# 自动申请并续期 Let's Encrypt 证书。
+# 手机浏览器仅在 HTTPS 页面允许麦克风，所以这一层不是可选项。
+{$DOMAIN_NAME:localhost} {
+	encode gzip zstd
+
+	# SSE 必须关闭缓冲，否则提示示例回答的首字延迟会被拖到流结束
+	@stream path /api/v1/voice/*/hint-stream
+	reverse_proxy @stream app:8000 {
+		flush_interval -1
+	}
+
+	# WebSocket 与普通请求
+	reverse_proxy app:8000
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
