@@ -1,0 +1,39 @@
+# 学习计划参数
+# 初始值按「完全开不了口」的水平设定（低于 SPEC 的 30 新词 / 20~30 分钟），
+# 随熟练度上调。见 docs/superpowers/specs/ 中的决策记录。
+study_plan:
+  daily_new_words: 15
+  daily_review_limit: 90
+  voice_target_words_count: 12
+  voice_sliding_window_size: 4
+  # 语音通话目标时长（分钟）。SPEC 为 20~30，MVP 起步取 10。
+  voice_session_target_minutes: 10
+
+models:
+  # 阶段 1：文本大模型（选词聚类、定制例句、4选1、SSE 提示、记忆提炼）
+  # 默认走中转站，成本优先。model_name 用 ${VAR:default} 语法，可随时改 .env 覆盖。
+  text_llm:
+    provider: "openai_compatible"
+    base_url: "${TEXT_LLM_BASE_URL:https://api.deepseek.com/v1}"
+    api_key: "${TEXT_LLM_API_KEY}"
+    model_name: "${TEXT_LLM_MODEL:deepseek-v4.1-flash}"
+    temperature: 0.7
+    extra_body: {}
+
+  # 阶段 2：实时端到端语音（走官方，不用中转站）
+  realtime_voice:
+    provider: "${VOICE_PROVIDER:qwen_omni}"
+    ws_url: "${VOICE_WS_URL:wss://dashscope.aliyuncs.com/api-ws/v1/realtime}"
+    api_key: "${VOICE_API_KEY}"
+    model_name: "${VOICE_MODEL:qwen-omni-turbo-realtime}"
+    voice_id: "${VOICE_ID:Chelsie}"
+    input_sample_rate: 16000
+    output_sample_rate: 24000
+
+  # 阶段 3：TTS（默认为本地缓存）
+  tts:
+    provider: "${TTS_PROVIDER:edge_tts}"
+    voice_id: "${TTS_VOICE:en-US-AndrewMultilingualNeural}"
+    base_url: "${TTS_BASE_URL:}"
+    api_key: "${TTS_API_KEY:}"
+    model_name: "${TTS_MODEL:}"
