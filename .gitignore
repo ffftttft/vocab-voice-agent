@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-dev/
+.venv-prod/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 运行时数据：不入库（数据库、音频缓存、词书原始文件）
+data/app.db
+data/app.db-wal
+data/app.db-shm
+data/audio_cache/*
+!data/audio_cache/.gitkeep
+data/wordbooks/*
+!data/wordbooks/.gitkeep
+
+# 记忆文件：个人画像与语言病历属于运行时产生的内容，但初始模板需入库
+data/memory/*.md
+!data/memory/user_profile.example.md
+!data/memory/error_patterns.example.md
+
+# 环境变量（含 API Key）
+.env
+.env.local
+.env.*.local
+
+# 前端
+web/node_modules/
+web/dist/
+web/.vite/
+
+# superpowers 执行快照（git-ignored scratch，见 executing-plans 规范）
+.superpowers/
+
+# 系统与编辑器
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# 临时产物
+tmp/
+*.log
