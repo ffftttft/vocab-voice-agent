@@ -88,16 +88,24 @@ async def create_daily_plan(
             "progress": await progress(session, target),
         }
 
-    planner = DailyPlanner(
-        llm=ctx.registry.get_text_llm(),
-        tts=ctx.registry.get_tts(),
-        memory=ctx.memory,
-        study_plan=ctx.config.study_plan,
-    )
+    # provider 构造本身也可能失败（如未配置 API Key），必须在同一层捕获，
+    # 否则用户看到的是裸 500 而不是可读的配置提示。
     try:
+        planner = DailyPlanner(
+            llm=ctx.registry.get_text_llm(),
+            tts=ctx.registry.get_tts(),
+            memory=ctx.memory,
+            study_plan=ctx.config.study_plan,
+        )
         result = await planner.generate_plan(session, target)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"计划生成失败：{exc}") from exc
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"计划生成失败：{exc}. "
+                "请检查 config.yaml / .env 中的模型配置（base_url、api_key、model_name）是否正确。"
+            ),
+        ) from exc
 
     return {
         "plan_date": target.isoformat(),

@@ -87,4 +87,39 @@ def create_app(
     async def health() -> dict:
         return {"status": "ok", "today": date.today().isoformat()}
 
+    _mount_frontend(app, base)
     return app
+
+
+def _mount_frontend(app: FastAPI, data_dir: Path) -> None:
+    """挂载前端静态产物（SPEC Milestone 5）。
+
+    查找顺序：web/dist（本地构建）→ web_dist（Docker 镜像内）。
+    找不到时不影响 API 使用，只是没有界面。
+    """
+    from pathlib import Path as _Path
+
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+
+    project_root = _Path(__file__).resolve().parents[2]
+    candidates = [project_root / "web" / "dist", project_root / "web_dist"]
+    dist = next((c for c in candidates if (c / "index.html").exists()), None)
+    if dist is None:
+        return
+
+    assets = dist / "assets"
+    if assets.exists():
+        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):  # type: ignore[no-untyped-def]
+        # API 路径不走 SPA 兜底
+        if full_path.startswith("api/"):
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=404)
+        candidate = dist / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(dist / "index.html")
