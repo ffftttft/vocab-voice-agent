@@ -294,3 +294,29 @@ class TestVoiceEndpoints:
             msg = ws.receive_json()
             assert msg["type"] == "server.error"
             assert "目标词" in msg["message"]
+
+
+class TestStaticSecurity:
+    """静态托管的安全边界。
+
+    这些路径即使在缺少前端产物时也必须 404 —— 返回 200 会让扫描器
+    误以为敏感文件可读，也会让审计报告出现假阳性。
+    """
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/.env",
+            "/config.yaml",
+            "/pyproject.toml",
+            "/uv.lock",
+            "/src/agent_server/config.py",
+            "/data/app.db",
+            "/.git/config",
+        ],
+    )
+    def test_sensitive_paths_return_404(self, client: TestClient, path: str) -> None:
+        assert client.get(path).status_code == 404
+
+    def test_api_paths_still_404(self, client: TestClient) -> None:
+        assert client.get("/api/v1/nonexistent").status_code == 404

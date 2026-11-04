@@ -130,14 +130,37 @@ def _mount_frontend(app: FastAPI, data_dir: Path) -> None:
     if assets.exists():
         app.mount("/assets", StaticFiles(directory=assets), name="assets")
 
+    # 明确拒绝的敏感路径：即使返回的是 index.html，200 也会误导扫描器与审计
+    _BLOCKED_PREFIXES = (
+        ".env",
+        ".git",
+        ".venv",
+        "config.yaml",
+        "pyproject.toml",
+        "uv.lock",
+        "src/",
+        "data/",
+        "tests/",
+        "docs/",
+        "web/",
+    )
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):  # type: ignore[no-untyped-def]
-        # API 路径不走 SPA 兜底
-        if full_path.startswith("api/"):
-            from fastapi import HTTPException
+        from fastapi import HTTPException
 
+        if full_path.startswith("api/"):
             raise HTTPException(status_code=404)
-        candidate = dist / full_path
+        if full_path and full_path.startswith(_BLOCKED_PREFIXES):
+            raise HTTPException(status_code=404)
+
+        candidate = (dist / full_path).resolve()
+        # 防目录穿越：解析后必须仍在 dist 内
+        try:
+            candidate.relative_to(dist.resolve())
+        except ValueError:
+            raise HTTPException(status_code=404) from None
+
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(dist / "index.html")
