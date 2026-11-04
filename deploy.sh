@@ -41,12 +41,12 @@ git reset --hard -q FETCH_HEAD
 rm -f /tmp/vocab.bundle
 echo "==> 代码已更新: ${PREV:0:7} -> $(git rev-parse --short HEAD)"
 
-if ! git diff -q "$PREV" HEAD -- pyproject.toml uv.lock 2>/dev/null; then
+if ! git diff --quiet "$PREV" HEAD -- pyproject.toml uv.lock 2>/dev/null; then
   echo "==> 依赖清单变化，安装生产依赖（--no-dev）"
   uv sync --frozen --no-dev --no-install-project
 fi
 
-if ! git diff -q "$PREV" HEAD -- web/ 2>/dev/null; then
+if ! git diff --quiet "$PREV" HEAD -- web/ 2>/dev/null; then
   echo "==> 前端变化，构建（限制 1G 堆内存）"
   (cd web && NODE_OPTIONS=--max-old-space-size=1024 npm run build)
 fi
