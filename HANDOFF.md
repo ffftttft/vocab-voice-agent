@@ -192,12 +192,25 @@ uv sync --frozen --no-dev --no-install-project
 
 ## 接手后的第一步
 
-1. `uv sync && uv run pytest -q` —— 确认 247 测试全绿
-2. 读 `STATUS.md` 的「剩余工作」
-3. 若用户已提供 API Key：填 `.env`，按 STATUS.md 的验收清单实测
+1. 读 `STATUS.md` 的「生产部署」章节 + 「剩余工作」
+2. 本地 `uv sync && uv run pytest -q` —— 确认 255 测试全绿
+3. **系统已部署上线**：http://43.136.173.192:8000/ （ssh 别名 `tencent`）
+4. 改代码后的标准循环：本地测试 → git commit → `./deploy.sh`
 
-**当前代码已全部完成。剩下的是用真实 Key 做验收，不是继续写功能。**
+**当前代码已全部完成并部署。剩下的是用真实 Key 做验收，不是继续写功能。**
 若用户要求新功能，先读设计文档确认它是否与既有裁决冲突。
+
+### 生产环境速查
+
+```bash
+ssh tencent                                        # ubuntu 用户，免密 sudo
+sudo systemctl status vocab-agent                  # 服务状态
+sudo journalctl -u vocab-agent -f                  # 实时日志
+curl http://43.136.173.192:8000/api/v1/health      # 健康检查
+vi /home/ubuntu/vocab-voice-agent/.env             # 改配置（部署不覆盖）
+sudo systemctl restart vocab-agent                 # 改 .env 后生效
+./deploy.sh                                        # 本地推送（在仓库根目录执行）
+```
 
 ---
 

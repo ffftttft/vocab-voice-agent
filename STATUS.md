@@ -3,9 +3,9 @@
 > **换会话后第一件事：读这个文件。** 它记录当前进度、下一步、以及未决事项。
 > 每次完成一个里程碑或做出重要裁决，必须更新本文件并提交。
 
-**最后更新**：2026-11-03
-**当前状态**：**全部里程碑已实现，247 测试通过，等待真实 API Key 做端到端验收**
-**测试状态**：`uv run pytest` → 247 passed；`uv run ruff check .` → All checks passed
+**最后更新**：2026-11-04
+**当前状态**：**已部署到生产服务器并外网可达**（http://43.136.173.192:8000/），255 测试通过。等待真实 API Key 做端到端验收
+**测试状态**：`uv run pytest` → 255 passed；`uv run ruff check .` → All checks passed
 
 ---
 
@@ -52,14 +52,52 @@
 
 ---
 
+## 生产部署（2026-11-04 已完成）
+
+| 项 | 值 |
+|---|---|
+| 服务器 | 腾讯云轻量（成都）43.136.173.192，Ubuntu 24.04，2核2G + 1.9G swap |
+| SSH | `ssh tencent`（ubuntu 免密 sudo）/ `ssh tencent-root` |
+| 应用目录 | `/home/ubuntu/vocab-voice-agent` |
+| 服务 | `sudo systemctl {status\|restart} vocab-agent`（开机自启、崩溃自动重启、MemoryMax=1G） |
+| 访问 | **http://43.136.173.192:8000/** （防火墙 8000 已放行，实测外网可达 49ms） |
+| Python 依赖 | uv 0.13.7 + `uv sync --frozen --no-dev`，**dev 包已验证全部剔除** |
+| PyPI 源 | `UV_DEFAULT_INDEX=清华镜像`（systemd 环境已配，直连 PyPI 会慢到超时） |
+| 前端 | node 22 + npm（npmmirror），`web/dist` 在服务器上构建，不入库 |
+| 密钥 | `/home/ubuntu/vocab-voice-agent/.env`（0600，untracked，**部署不会覆盖**） |
+
+### 改动后推送服务器（标准流程）
+
+```bash
+# 本地：改代码 → 测试 → 提交
+uv run pytest -q && uv run ruff check .
+git add -A && git commit -m "fix: ..."
+
+# 一键部署（bundle → 服务器 fetch/reset → 按需 uv sync → 按需前端构建 → 重启+健康轮询）
+./deploy.sh
+```
+
+### ⚠️ 部署会覆盖的东西
+
+- `config.yaml` 是 **tracked 文件**：`deploy.sh` 的 `git reset --hard` 会把它打回仓库版本。
+  **在服务器上直接改 config.yaml 或用 admin 接口改配置都会丢。**
+  持久配置一律写 `.env`（untracked，部署保留）。
+- `data/`（app.db、audio_cache、memory）untracked，部署不动 ✓
+
+### 线上已验证
+
+- 健康检查/首页/SPA 路由/docs 全部 200
+- `/.env`、`/config.yaml`、`/src/`、`/data/`、`/.git/`、目录穿越 全部 404（安全修复 a96ef7d）
+- admin 配置接口返回的 api_key 已掩码
+
+---
+
 ## 剩余工作（按优先级）
 
 ### 1. 真实 API Key 验收（阻塞在用户）
 
-需要用户提供：
-
-- [ ] 中转站 `base_url` + `api_key` + 实际模型名 → 填 `.env` 的 `TEXT_LLM_*`
-- [ ] 阿里百炼 `api_key` → 填 `.env` 的 `VOICE_API_KEY`
+- [ ] 中转站 `base_url` + `api_key` + 实际模型名 → 填**服务器上的** `.env`（`ssh tencent` 后编辑 `/home/ubuntu/vocab-voice-agent/.env`），然后 `sudo systemctl restart vocab-agent`
+- [ ] 阿里百炼 `api_key` → 同上 `VOICE_API_KEY`
 
 拿到后必须实测：
 
