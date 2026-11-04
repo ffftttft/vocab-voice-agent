@@ -194,7 +194,9 @@ uv sync --frozen --no-dev --no-install-project
 
 1. 读 `STATUS.md` 的「生产部署」章节 + 「剩余工作」
 2. 本地 `uv sync && uv run pytest -q` —— 确认 255 测试全绿
-3. **系统已部署上线**：http://43.136.173.192:8000/ （ssh 别名 `tencent`）
+3. **系统已部署上线**：**https://aixft.top/** （ssh 别名 `tencent`）
+   - 备用：http://43.136.173.192:8000/
+   - 手机可直接用（HTTPS 已就绪，麦克风权限可用）
 4. 改代码后的标准循环：本地测试 → git commit → `./deploy.sh`
 
 **当前代码已全部完成并部署。剩下的是用真实 Key 做验收，不是继续写功能。**
@@ -204,6 +206,8 @@ uv sync --frozen --no-dev --no-install-project
 
 ```bash
 ssh tencent                                        # ubuntu 用户，免密 sudo
+sudo systemctl status caddy                        # HTTPS 反代状态
+sudo tail -f /var/log/caddy/*.log                  # 证书申请/续期日志
 sudo systemctl status vocab-agent                  # 服务状态
 sudo journalctl -u vocab-agent -f                  # 实时日志
 curl http://43.136.173.192:8000/api/v1/health      # 健康检查

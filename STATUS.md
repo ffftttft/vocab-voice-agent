@@ -60,7 +60,10 @@
 | SSH | `ssh tencent`（ubuntu 免密 sudo）/ `ssh tencent-root` |
 | 应用目录 | `/home/ubuntu/vocab-voice-agent` |
 | 服务 | `sudo systemctl {status\|restart} vocab-agent`（开机自启、崩溃自动重启、MemoryMax=1G） |
-| 访问 | **http://43.136.173.192:8000/** （防火墙 8000 已放行，实测外网可达 49ms） |
+| 访问 | **https://aixft.top/** （Let's Encrypt 证书，2027-02-02 到期，Caddy 自动续期） |
+| 备用访问 | http://43.136.173.192:8000/ （直连，调试用） |
+| HTTPS | Caddy 2.11.8 反代 127.0.0.1:8000，`isSecureContext: true`（**手机麦克风前提已满足**） |
+| 域名 | `aixft.top` / `www.aixft.top` → 43.136.173.192（阿里云 DNS） |
 | Python 依赖 | uv 0.13.7 + `uv sync --frozen --no-dev`，**dev 包已验证全部剔除** |
 | PyPI 源 | `UV_DEFAULT_INDEX=清华镜像`（systemd 环境已配，直连 PyPI 会慢到超时） |
 | 前端 | node 22 + npm（npmmirror），`web/dist` 在服务器上构建，不入库 |
@@ -89,6 +92,18 @@ git add -A && git commit -m "fix: ..."
 - 健康检查/首页/SPA 路由/docs 全部 200
 - `/.env`、`/config.yaml`、`/src/`、`/data/`、`/.git/`、目录穿越 全部 404（安全修复 a96ef7d）
 - admin 配置接口返回的 api_key 已掩码
+- HTTPS 证书签发成功，`ssl_verify_result: 0`，浏览器 `isSecureContext: true`
+- `navigator.mediaDevices.getUserMedia` 与 `AudioWorklet` 在 HTTPS 下均可用
+
+### 域名解析（aixft.top，2026-11-04 整理）
+
+| 记录 | 指向 | 用途 |
+|---|---|---|
+| `@` / `www` | 43.136.173.192 | **本项目**（vocab-agent） |
+| `yantu` / `yantu-admin` | 47.108.233.32 | 研图项目（保留） |
+| ~~`aixft` / `vnc` / `bosshunter`~~ | ~~47.109.39.113~~ | **已删除**（刷题项目，用户确认无关） |
+
+另外两条历史记录原指向 8.137.49.216 —— 那台已于 2026-10-27 到期停用，现已改指向本项目服务器。
 
 ---
 

@@ -1,20 +1,23 @@
-# 自动申请并续期 Let's Encrypt 证书。
+# 域名反向代理 + 自动 HTTPS
+# Caddy 会自动向 Let's Encrypt 申请并续期证书。
 # 手机浏览器仅在 HTTPS 页面允许麦克风，所以这一层不是可选项。
-{$DOMAIN_NAME:localhost} {
+
+aixft.top, www.aixft.top {
 	encode gzip zstd
 
-	# SSE 必须关闭缓冲，否则提示示例回答的首字延迟会被拖到流结束
+	# SSE 必须关闭缓冲，否则"提示示例回答"会被缓冲到流结束才显示
 	@stream path /api/v1/voice/*/hint-stream
-	reverse_proxy @stream app:8000 {
+	reverse_proxy @stream 127.0.0.1:8000 {
 		flush_interval -1
 	}
 
 	# WebSocket 与普通请求
-	reverse_proxy app:8000
+	reverse_proxy 127.0.0.1:8000
 
 	header {
 		-Server
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	}
 }

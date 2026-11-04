@@ -51,6 +51,13 @@ if ! git diff --quiet "$PREV" HEAD -- web/ 2>/dev/null; then
   (cd web && NODE_OPTIONS=--max-old-space-size=1024 npm run build)
 fi
 
+# 同步 Caddy 配置（域名/反代规则变更时生效）
+if ! cmp -s /etc/caddy/Caddyfile "$HOME/vocab-voice-agent/Caddyfile" 2>/dev/null; then
+  echo "==> Caddy 配置有变化，同步并重载"
+  sudo cp "$HOME/vocab-voice-agent/Caddyfile" /etc/caddy/Caddyfile
+  sudo caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 && sudo systemctl reload caddy
+fi
+
 sudo systemctl restart vocab-agent
 # uvicorn 冷启动约 10s（导入全部依赖），轮询而不是固定 sleep
 for i in $(seq 1 20); do
