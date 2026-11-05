@@ -3,76 +3,16 @@ import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { useAppStore } from '../store/useAppStore'
-import { AnimatedNumber, StatusBar } from '../components/ShellComponents'
-
-const WORDBOOK_DISPLAY_CARDS = [
-  {
-    id: 1,
-    word: 'deprecate',
-    phonetic: '/ˈdeprəkeɪt/',
-    def: 'v. 弃用；淘汰',
-    tag: '#API',
-    topic: 'tech_dev',
-    statusType: 'plan' as const,
-    statusLabel: "In Today's Plan",
-  },
-  {
-    id: 2,
-    word: 'idempotent',
-    phonetic: '/ˌaɪdəmˈpoʊtənt/',
-    def: 'adj. 幂等的',
-    tag: '#Arch',
-    topic: 'tech_dev',
-    statusType: 'plan' as const,
-    statusLabel: "In Today's Plan",
-  },
-  {
-    id: 3,
-    word: 'bottleneck',
-    phonetic: '/ˈbɑːtlnek/',
-    def: 'n. 瓶颈；障碍',
-    tag: '#Perf',
-    topic: 'problem_solving',
-    statusType: 'review' as const,
-    statusLabel: 'Review · S: 14d',
-  },
-  {
-    id: 4,
-    word: 'ratify',
-    phonetic: '/ˈrætɪfaɪ/',
-    def: 'v. 正式批准；签署',
-    tag: '#Gov',
-    topic: 'workplace_comm',
-    statusType: 'voice' as const,
-    statusLabel: 'Voice Target',
-  },
-  {
-    id: 5,
-    word: 'contingent',
-    phonetic: '/kənˈtɪndʒənt/',
-    def: 'adj. 依条件而定',
-    tag: '#Contract',
-    topic: 'workplace_comm',
-    statusType: 'new' as const,
-    statusLabel: 'New · Queue #5',
-  },
-  {
-    id: 6,
-    word: 'ameliorate',
-    phonetic: '/əˈmiːliəreɪt/',
-    def: 'v. 改善缓解',
-    tag: '#Refactor',
-    topic: 'problem_solving',
-    statusType: 'ingested' as const,
-    statusLabel: 'Ingested',
-  },
-]
+import { AnimatedNumber } from '../components/ShellComponents'
 
 export default function LexiconPlanetPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
   const navigate = useAppStore((s) => s.navigate)
   const stats = useAppStore((s) => s.stats)
+  const plan = useAppStore((s) => s.plan)
   const words = useAppStore((s) => s.words)
+  const tagCounts = useAppStore((s) => s.tagCounts)
+  const books = useAppStore((s) => s.books)
   const selectedTopicTag = useAppStore((s) => s.selectedTopicTag)
   const setSelectedTopicTag = useAppStore((s) => s.setSelectedTopicTag)
   const selectedWordIds = useAppStore((s) => s.selectedWordIds)
@@ -85,35 +25,66 @@ export default function LexiconPlanetPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedDayIdx, setSelectedDayIdx] = useState(0)
 
+  const totalWords = stats?.total ?? words.length
+  const currentBookLabel = activeWordbookName || books[0] || ''
+
   // ============================================================================
   // SCREEN 06: WORDBOOKS & AI TAGGING
   // ============================================================================
   if (currentScreen === '06-wordbooks-tagging') {
-    const dynamicCards =
-      words.length >= 6
-        ? words.slice(0, 6).map((w, idx) => ({
-            id: w.id || idx + 1,
-            word: w.word,
-            phonetic: w.phonetic_us || WORDBOOK_DISPLAY_CARDS[idx % 6].phonetic,
-            def:
-              w.pos_defs?.[0]?.pos && w.pos_defs?.[0]?.def
-                ? `${w.pos_defs[0].pos} ${w.pos_defs[0].def}`
-                : WORDBOOK_DISPLAY_CARDS[idx % 6].def,
-            tag: w.topic_tags?.[0]
-              ? `#${w.topic_tags[0].slice(0, 8)}`
-              : WORDBOOK_DISPLAY_CARDS[idx % 6].tag,
-            topic: w.topic_tags?.[0] ?? WORDBOOK_DISPLAY_CARDS[idx % 6].topic,
-            statusType: WORDBOOK_DISPLAY_CARDS[idx % 6].statusType,
-            statusLabel: WORDBOOK_DISPLAY_CARDS[idx % 6].statusLabel,
-          }))
-        : WORDBOOK_DISPLAY_CARDS
+    const mappedCards = words.map((w) => {
+      const firstDef =
+        w.pos_defs?.[0]?.pos || w.pos_defs?.[0]?.def
+          ? `${w.pos_defs[0].pos ?? ''} ${w.pos_defs[0].def ?? ''}`.trim()
+          : '点击听取发音'
+      const primaryTag = w.topic_tags?.[0] ?? 'general'
+      const statusType =
+        w.state === 2
+          ? ('review' as const)
+          : w.state === 1 || w.state === 3
+            ? ('plan' as const)
+            : ('new' as const)
+      const statusLabel =
+        w.state === 2
+          ? `Review · S: ${w.stability ?? 1}d`
+          : w.state === 1
+            ? 'Learning'
+            : w.state === 3
+              ? 'Relearning'
+              : 'New Card'
+
+      return {
+        id: w.id,
+        word: w.word,
+        phonetic: w.phonetic_us || '/—/',
+        def: firstDef,
+        tag: primaryTag.startsWith('#') ? primaryTag : `#${primaryTag}`,
+        tags: w.topic_tags ?? [],
+        statusType,
+        statusLabel,
+      }
+    })
 
     const filteredCards =
       selectedTopicTag === 'all'
-        ? dynamicCards
-        : dynamicCards.filter((c) => c.topic === selectedTopicTag || c.tag.toLowerCase().includes(selectedTopicTag.slice(0, 4)))
+        ? mappedCards
+        : mappedCards.filter((c) => c.tags.includes(selectedTopicTag))
 
-    const displayList = filteredCards.length > 0 ? filteredCards : dynamicCards
+    const topicTabs = [
+      { id: 'all', label: `All (${totalWords})`, count: '' },
+      { id: 'tech_dev', label: 'tech_dev', count: `(${tagCounts.tech_dev ?? 0})` },
+      {
+        id: 'workplace_comm',
+        label: 'workplace_comm',
+        count: `(${tagCounts.workplace_comm ?? 0})`,
+      },
+      {
+        id: 'problem_solving',
+        label: 'problem_solving',
+        count: `(${tagCounts.problem_solving ?? 0})`,
+      },
+      { id: 'daily_life', label: 'daily_life', count: `(${tagCounts.daily_life ?? 0})` },
+    ]
 
     return (
       <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] flex flex-col justify-between relative">
@@ -130,9 +101,8 @@ export default function LexiconPlanetPage() {
           }}
         />
 
-        {/* Top Fixed Structure: Status Bar & Top Navigation */}
-        <div className="sticky top-0 z-40 bg-[#F9F6F0]/95 backdrop-blur-md pb-1">
-          <StatusBar />
+        {/* Top Fixed Structure: Top Navigation */}
+        <div className="sticky top-0 z-40 bg-[#F9F6F0]/95 backdrop-blur-md pb-1 pt-2">
           <div className="flex items-center justify-between px-5 mt-1 mb-2">
             {/* Circular Back Button */}
             <button
@@ -155,7 +125,7 @@ export default function LexiconPlanetPage() {
             <div className="flex items-center gap-1.5 bg-[#FFF4D6] border border-[#F4B844]/40 px-2.5 py-1 rounded-full shadow-[0_0_12px_rgba(244,184,68,0.22)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#F4B844] animate-pulse" />
               <span className="text-[11px] font-label font-semibold text-[#946300] tracking-tight">
-                <AnimatedNumber value={stats?.total ?? 3000} /> Words
+                <AnimatedNumber value={totalWords} /> Words
               </span>
             </div>
           </div>
@@ -169,14 +139,14 @@ export default function LexiconPlanetPage() {
               <div className="flex items-center gap-3">
                 <div className="relative w-11 h-11 rounded-2xl overflow-hidden shadow-inner bg-[#F9F6F0] border-2 border-white flex-shrink-0 flex items-center justify-center">
                   <img
-                    alt="Chubby coral-pink clay mascot Pip avatar"
+                    alt="Pip avatar"
                     className="w-full h-full object-cover scale-110"
                     src="/assets/pip-avatar.png"
                   />
                 </div>
                 <div>
                   <span className="block text-[10px] font-mono tracking-wider font-semibold text-[#8C857B] uppercase">
-                    FSRS 4.5 • SEMANTIC ENGINE
+                    FSRS • SEMANTIC ENGINE
                   </span>
                   <h2 className="text-[16px] font-headline font-semibold text-[#1C202B] leading-snug">
                     Non-Sequential Scenario Clustering
@@ -186,8 +156,7 @@ export default function LexiconPlanetPage() {
             </div>
 
             <p className="font-body text-[12.5px] leading-relaxed text-[#5A554C] mb-4">
-              Upload any JSON or CSV wordbook. Pip batch-tags every 50 words into real-life
-              scenario themes and initializes FSRS cards.
+              上传任意 JSON 或 CSV 词书，系统自动初始化 FSRS 记忆卡片并按真实语境主题完成归类。
             </p>
 
             {/* Inner Dashed Ivory Dropzone */}
@@ -204,9 +173,19 @@ export default function LexiconPlanetPage() {
 
               {/* Active File Indicator */}
               <div className="my-3 py-1.5 px-2.5 rounded-xl bg-[#F4EFE3] flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#5A554C] border border-[#E9DFCE]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    currentBookLabel ? 'bg-[#58B37C]' : 'bg-[#8C857B]'
+                  }`}
+                />
                 <span className="truncate max-w-[240px]">
-                  Active: <strong className="font-medium text-[#1C202B]">{activeWordbookName}</strong> (60/60 batches tagged)
+                  {currentBookLabel ? (
+                    <>
+                      Active: <strong className="font-medium text-[#1C202B]">{currentBookLabel}</strong> ({totalWords} words)
+                    </>
+                  ) : (
+                    '尚未导入词书 · 点击下方按钮选择文件'
+                  )}
                 </span>
               </div>
 
@@ -227,13 +206,7 @@ export default function LexiconPlanetPage() {
             aria-label="Scenario Topics"
             className="relative -mx-4 px-4 overflow-x-auto no-scrollbar flex items-center gap-2 pt-1 pb-1"
           >
-            {[
-              { id: 'all', label: 'All (3,000)', count: '' },
-              { id: 'tech_dev', label: 'tech_dev', count: '(1,240)' },
-              { id: 'workplace_comm', label: 'workplace_comm', count: '(860)' },
-              { id: 'problem_solving', label: 'problem_solving', count: '(520)' },
-              { id: 'daily_life', label: 'daily_life', count: '(380)' },
-            ].map((tab) => {
+            {topicTabs.map((tab) => {
               const active = selectedTopicTag === tab.id
               return (
                 <button
@@ -266,27 +239,33 @@ export default function LexiconPlanetPage() {
             <span className="text-xs font-body font-semibold text-[#5A554C]">
               Clustered Vocabulary Cards
             </span>
-            <span className="text-[11px] font-mono text-[#8C857B]">Batch 01 / 60</span>
+            <span className="text-[11px] font-mono text-[#8C857B]">
+              {filteredCards.length} / {totalWords} shown
+            </span>
           </div>
 
-          {/* 2-Column Tactile Word Grid (2x3 Grid) */}
-          {uiStateMode === 'empty' ? (
+          {/* 2-Column Tactile Word Grid */}
+          {uiStateMode === 'empty' || filteredCards.length === 0 ? (
             <div className="bg-white rounded-[24px] p-6 border border-[#EBE4D8] text-center space-y-2">
-              <p className="font-headline italic text-lg text-[#1C202B]">No wordbooks imported yet</p>
+              <p className="font-headline italic text-lg text-[#1C202B]">
+                {totalWords === 0 ? '尚未导入词书' : '该分类下暂无词汇'}
+              </p>
               <p className="text-xs text-[#8C857B]">
-                Tap Browse File above to upload a JSON or CSV vocabulary deck.
+                {totalWords === 0
+                  ? '点击上方 Browse File 上传 JSON 或 CSV 词表文件，即可在此查看卡片。'
+                  : '切换其他标签或上传更多词汇。'}
               </p>
             </div>
           ) : (
             <section className="grid grid-cols-2 gap-3">
-              {displayList.map((card, i) => {
+              {filteredCards.map((card, i) => {
                 const isSelected = selectedWordIds.includes(card.id)
                 return (
                   <motion.article
-                    key={card.word}
+                    key={card.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22, delay: i * 0.03 }}
+                    transition={{ duration: 0.22, delay: Math.min(i * 0.02, 0.2) }}
                     onClick={() => {
                       toggleWordSelection(card.id)
                       void api.playSpeech(card.word)
@@ -300,7 +279,7 @@ export default function LexiconPlanetPage() {
                     {/* Top Row: Tag & Checkmark Badge */}
                     <div className="flex items-start justify-between">
                       <span
-                        className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-medium ${
+                        className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-medium truncate max-w-[100px] ${
                           isSelected
                             ? 'bg-[#FFF0EC] text-[#FF6B4A] border border-[#FF6B4A]/20'
                             : 'bg-[#F5F2EB] text-[#5A554C]'
@@ -323,10 +302,10 @@ export default function LexiconPlanetPage() {
 
                     {/* Middle Content: Headword & Definition */}
                     <div className="my-auto">
-                      <h3 className="font-headline italic text-[19px] font-semibold text-[#1C202B] leading-tight tracking-tight">
+                      <h3 className="font-headline italic text-[19px] font-semibold text-[#1C202B] leading-tight tracking-tight truncate">
                         {card.word}
                       </h3>
-                      <span className="block font-mono text-[10.5px] text-[#8C857B] mt-0.5">
+                      <span className="block font-mono text-[10.5px] text-[#8C857B] mt-0.5 truncate">
                         {card.phonetic}
                       </span>
                       <p className="font-body text-[11.5px] font-medium text-[#5A554C] mt-1 line-clamp-1">
@@ -348,23 +327,9 @@ export default function LexiconPlanetPage() {
                           <span>{card.statusLabel}</span>
                         </div>
                       )}
-                      {card.statusType === 'voice' && (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFF8E7] border border-[#F4B844]/30 text-[#946300] text-[10px] font-body font-semibold">
-                          <span className="material-symbols-outlined fill-icon text-[12px] text-[#F4B844]">
-                            star
-                          </span>
-                          <span>{card.statusLabel}</span>
-                        </div>
-                      )}
                       {card.statusType === 'new' && (
                         <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F0EDFF] text-[#533FD1] text-[10px] font-mono font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#9B8AFB]" />
-                          <span>{card.statusLabel}</span>
-                        </div>
-                      )}
-                      {card.statusType === 'ingested' && (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E6F5EC] text-[#236B42] text-[10px] font-body font-semibold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />
                           <span>{card.statusLabel}</span>
                         </div>
                       )}
@@ -376,7 +341,7 @@ export default function LexiconPlanetPage() {
           )}
         </div>
 
-        {/* Bottom Floating Action Area + Home Bar Indicator */}
+        {/* Bottom Floating Action Area */}
         <footer className="sticky bottom-0 z-40 bg-gradient-to-t from-[#F9F6F0] via-[#F9F6F0]/95 to-transparent pt-3 pb-2 px-4 backdrop-blur-[2px]">
           <button
             type="button"
@@ -390,10 +355,9 @@ export default function LexiconPlanetPage() {
               auto_fix_high
             </span>
             <span className="font-body font-semibold text-[13.5px] tracking-tight">
-              Regenerate Today&apos;s 120-Word Scenario Plan →
+              Regenerate Today&apos;s Scenario Plan →
             </span>
           </button>
-          <div className="w-32 h-1 bg-[#1C202B]/25 rounded-full mx-auto mt-3 mb-1" />
         </footer>
       </div>
     )
@@ -402,27 +366,48 @@ export default function LexiconPlanetPage() {
   // ============================================================================
   // SCREEN 05: LEXICON PLANET (3D ISLAND & FSRS ECOSYSTEM)
   // ============================================================================
-  const upcomingBars = [
-    { day: 'Today', count: 90, height: 68, isToday: true },
-    { day: 'Thu', count: 74, height: 56, isToday: false },
-    { day: 'Fri', count: 68, height: 51, isToday: false },
-    { day: 'Sat', count: 52, height: 39, isToday: false },
-    { day: 'Sun', count: 45, height: 34, isToday: false },
-    { day: 'Mon', count: 61, height: 46, isToday: false },
-    { day: 'Tue', count: 49, height: 37, isToday: false },
-  ]
+  const rawUpcoming =
+    stats?.upcoming && stats.upcoming.length === 7
+      ? stats.upcoming
+      : Array.from({ length: 7 }, (_, idx) => {
+          const dt = new Date()
+          dt.setDate(dt.getDate() + idx)
+          return { date: dt.toISOString().slice(0, 10), offset: idx, count: 0 }
+        })
+
+  const maxBarCount = Math.max(1, ...rawUpcoming.map((u) => u.count))
+  const upcomingBars = rawUpcoming.map((u, idx) => {
+    const dt = new Date(`${u.date}T00:00:00`)
+    const dayLabel =
+      idx === 0
+        ? 'Today'
+        : Number.isNaN(dt.getTime())
+          ? `+${idx}d`
+          : dt.toLocaleDateString('en-US', { weekday: 'short' })
+    const height = u.count === 0 ? 8 : Math.max(14, Math.round((u.count / maxBarCount) * 68))
+    return {
+      day: dayLabel,
+      date: u.date,
+      count: u.count,
+      height,
+      isToday: idx === 0,
+    }
+  })
+
+  const totalUpcomingDue = upcomingBars.reduce((acc, b) => acc + b.count, 0)
+  const levelNum = Math.max(1, Math.floor(totalWords / 200) + 1)
+  const levelProgressPct = totalWords === 0 ? 0 : Math.min(100, Math.round(((totalWords % 200) / 200) * 100))
+  const planDone = plan?.progress.done ?? 0
+  const planTotal = plan?.progress.total ?? 0
+  const planPct = planTotal > 0 ? Math.round((planDone / planTotal) * 100) : 0
 
   return (
     <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] relative flex flex-col overflow-x-hidden pb-28">
       {/* Top Hero Gradient Canvas (Lavender-Peach Dawn to Alabaster) */}
       <div className="absolute top-0 left-0 right-0 h-[360px] bg-gradient-to-b from-[#DBD6F5] via-[#F5E2D4] to-[#F9F6F0] pointer-events-none z-0" />
 
-      <div className="relative z-20">
-        <StatusBar />
-      </div>
-
       {/* Main Scrollable Content Area */}
-      <div className="relative z-10 flex-1">
+      <div className="relative z-10 flex-1 pt-2">
         {/* 2. Hero Sky & Floating Level Bar */}
         <section className="px-4 pt-1 pb-2">
           <div className="backdrop-blur-md bg-white/75 border border-white/70 shadow-sm rounded-full px-4 py-2.5 flex items-center justify-between">
@@ -434,17 +419,20 @@ export default function LexiconPlanetPage() {
                 <span className="inline-block w-2 h-2 rounded-full bg-[#58B37C] animate-pulse" />
               </div>
               <div className="w-28 bg-[#1C202B]/10 rounded-full h-[4px] mt-1.5 overflow-hidden">
-                <div className="bg-[#F4B844] h-full rounded-full w-[74%]" />
+                <div
+                  className="bg-[#F4B844] h-full rounded-full"
+                  style={{ width: `${levelProgressPct}%` }}
+                />
               </div>
             </div>
 
             <div className="flex items-center gap-2.5">
               <div className="text-right">
                 <span className="font-mono text-[11px] font-semibold text-[#1C202B] block tracking-tight">
-                  Lv 7 → 8
+                  Lv {levelNum}
                 </span>
                 <span className="font-mono text-[9.5px] text-[#5A554C] block leading-none">
-                  1,420 words
+                  <AnimatedNumber value={totalWords} /> words
                 </span>
               </div>
               <button
@@ -478,15 +466,13 @@ export default function LexiconPlanetPage() {
             <button
               type="button"
               onClick={() =>
-                toast.success('FSRS Crystal Fountain · 91.4% Retrievability', {
-                  description: '1,198 mature review cards maintaining >90% stability.',
-                })
+                toast.success(`FSRS Review Pool · ${stats?.review ?? 0} mature cards`)
               }
               className="absolute top-4 left-1 z-20 backdrop-blur-md bg-white/85 border border-white shadow-[0_6px_16px_rgba(0,0,0,0.06)] rounded-full px-3 py-1.5 flex items-center gap-1.5 press-scale"
             >
               <span className="text-xs">⛲</span>
               <span className="text-[11px] font-semibold text-[#1C202B] font-body tracking-tight">
-                Fountain · <span className="font-mono text-[#2B579A]">91.4%</span> FSRS
+                Review · <span className="font-mono text-[#2B579A]">{stats?.review ?? 0}</span>
               </span>
             </button>
 
@@ -498,7 +484,7 @@ export default function LexiconPlanetPage() {
             >
               <span className="text-xs">🌻</span>
               <span className="text-[11px] font-semibold text-[#1C202B] font-body tracking-tight">
-                Sunflowers · <span className="font-mono text-[#946300]">12d</span> streak
+                Due Today · <span className="font-mono text-[#946300]">{stats?.due ?? 0}</span>
               </span>
             </button>
           </div>
@@ -530,42 +516,38 @@ export default function LexiconPlanetPage() {
               {
                 emoji: '🏡',
                 emojiBg: 'bg-[#E6F5EC]',
-                badge: '93% R',
+                badge: 'Cluster',
                 badgeClass: 'text-[#236B42] bg-[#E6F5EC]',
                 title: 'Tech & Dev',
-                count: '480 words',
+                count: `${tagCounts.tech_dev ?? 0} words`,
                 tag: 'tech_dev',
-                locked: false,
               },
               {
                 emoji: '🌻',
                 emojiBg: 'bg-[#FFF4D6]',
-                badge: '89% R',
+                badge: 'Cluster',
                 badgeClass: 'text-[#946300] bg-[#FFF4D6]',
                 title: 'Workplace',
-                count: '360 words',
+                count: `${tagCounts.workplace_comm ?? 0} words`,
                 tag: 'workplace_comm',
-                locked: false,
               },
               {
                 emoji: '☕',
                 emojiBg: 'bg-[#EBF2FC]',
-                badge: 'Active',
+                badge: 'Cluster',
                 badgeClass: 'text-[#2B579A] bg-[#EBF2FC]',
-                title: 'Daily Dining',
-                count: '310 words',
+                title: 'Daily Life',
+                count: `${tagCounts.daily_life ?? 0} words`,
                 tag: 'daily_life',
-                locked: false,
               },
               {
                 emoji: '🎙️',
-                emojiBg: 'bg-white/70',
-                badge: 'lock',
-                badgeClass: '',
-                title: 'Debate & Pitch',
-                count: '270 words · Next',
+                emojiBg: 'bg-[#F0EDFF]',
+                badge: 'Cluster',
+                badgeClass: 'text-[#533FD1] bg-[#F0EDFF]',
+                title: 'Problem Solving',
+                count: `${tagCounts.problem_solving ?? 0} words`,
                 tag: 'problem_solving',
-                locked: true,
               },
             ].map((cluster) => (
               <button
@@ -575,11 +557,7 @@ export default function LexiconPlanetPage() {
                   setSelectedTopicTag(cluster.tag)
                   navigate('06-wordbooks-tagging')
                 }}
-                className={`rounded-[22px] p-3.5 min-w-[128px] max-w-[134px] flex flex-col justify-between shrink-0 text-left press-scale ${
-                  cluster.locked
-                    ? 'bg-[#F6F2EA] border border-[#E8E1D5] opacity-85'
-                    : 'bg-white shadow-[0_4px_16px_rgba(45,38,30,0.04)] border border-[#EBE4D8]'
-                }`}
+                className="rounded-[22px] p-3.5 min-w-[128px] max-w-[134px] flex flex-col justify-between shrink-0 text-left press-scale bg-white shadow-[0_4px_16px_rgba(45,38,30,0.04)] border border-[#EBE4D8]"
               >
                 <div className="flex items-center justify-between w-full">
                   <span
@@ -587,24 +565,14 @@ export default function LexiconPlanetPage() {
                   >
                     {cluster.emoji}
                   </span>
-                  {cluster.locked ? (
-                    <span className="material-symbols-outlined text-[13px] text-[#8C857B]">
-                      lock
-                    </span>
-                  ) : (
-                    <span
-                      className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${cluster.badgeClass}`}
-                    >
-                      {cluster.badge}
-                    </span>
-                  )}
+                  <span
+                    className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${cluster.badgeClass}`}
+                  >
+                    {cluster.badge}
+                  </span>
                 </div>
                 <div className="mt-2.5">
-                  <h3
-                    className={`font-bold text-[12.5px] leading-tight tracking-tight ${
-                      cluster.locked ? 'text-[#5A554C]' : 'text-[#1C202B]'
-                    }`}
-                  >
+                  <h3 className="font-bold text-[12.5px] leading-tight tracking-tight text-[#1C202B]">
                     {cluster.title}
                   </h3>
                   <p className="font-mono text-[10px] text-[#5A554C] mt-0.5">{cluster.count}</p>
@@ -623,7 +591,7 @@ export default function LexiconPlanetPage() {
               </h3>
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold font-mono bg-[#E6F5EC] text-[#236B42] px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />
-                Health 94.2%
+                Total {totalWords}
               </span>
             </div>
             <p className="text-[11px] text-[#8C857B] font-body mb-3">
@@ -641,7 +609,7 @@ export default function LexiconPlanetPage() {
                   New
                 </span>
                 <span className="font-mono text-[13px] font-bold text-[#533FD1]">
-                  <AnimatedNumber value={stats?.new ?? 1580} />
+                  <AnimatedNumber value={stats?.new ?? 0} />
                 </span>
               </button>
               <button
@@ -652,7 +620,9 @@ export default function LexiconPlanetPage() {
                 <span className="block text-[10px] uppercase font-semibold text-[#946300] tracking-wider">
                   Learn
                 </span>
-                <span className="font-mono text-[13px] font-bold text-[#946300]">142</span>
+                <span className="font-mono text-[13px] font-bold text-[#946300]">
+                  <AnimatedNumber value={stats?.learning ?? 0} />
+                </span>
               </button>
               <button
                 type="button"
@@ -662,17 +632,21 @@ export default function LexiconPlanetPage() {
                 <span className="block text-[10px] uppercase font-semibold text-[#236B42] tracking-wider">
                   Review
                 </span>
-                <span className="font-mono text-[13px] font-bold text-[#236B42]">1,198</span>
+                <span className="font-mono text-[13px] font-bold text-[#236B42]">
+                  <AnimatedNumber value={stats?.review ?? 0} />
+                </span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate('04-fsrs-sprint-wrong')}
+                onClick={() => navigate('02-fsrs-sprint-question')}
                 className="bg-[#FCECE8] rounded-[16px] py-2 px-1 border border-[#E5735D]/20 press-scale"
               >
                 <span className="block text-[10px] uppercase font-semibold text-[#A83825] tracking-wider">
                   Relearn
                 </span>
-                <span className="font-mono text-[13px] font-bold text-[#A83825]">80</span>
+                <span className="font-mono text-[13px] font-bold text-[#A83825]">
+                  <AnimatedNumber value={stats?.relearning ?? 0} />
+                </span>
               </button>
             </div>
 
@@ -680,7 +654,9 @@ export default function LexiconPlanetPage() {
               <span className="text-xs font-semibold text-[#1C202B] font-body">
                 7-Day FSRS Review Pressure
               </span>
-              <span className="font-mono text-[11px] text-[#5A554C]">Total: 439 words</span>
+              <span className="font-mono text-[11px] text-[#5A554C]">
+                Total: {totalUpcomingDue} words
+              </span>
             </div>
 
             {/* 7-Day Due Pressure Bar Chart */}
@@ -689,11 +665,11 @@ export default function LexiconPlanetPage() {
                 const isSelected = selectedDayIdx === idx
                 return (
                   <button
-                    key={bar.day}
+                    key={bar.date + idx}
                     type="button"
                     onClick={() => {
                       setSelectedDayIdx(idx)
-                      toast(`${bar.day}: ${bar.count} FSRS reviews scheduled`)
+                      toast(`${bar.date}: ${bar.count} FSRS reviews scheduled`)
                     }}
                     className="flex flex-col items-center gap-1.5 h-full justify-end cursor-pointer focus:outline-none"
                   >
@@ -740,17 +716,21 @@ export default function LexiconPlanetPage() {
             </div>
             <div className="flex-1 pr-1">
               <p className="text-xs font-semibold text-[#1C202B] leading-tight">
-                Watering the Crystal Fountain
+                Today&apos;s Study &amp; Voice Progress
               </p>
               <p className="text-[11px] text-[#5A554C] mt-0.5 leading-snug">
-                Speak <span className="font-bold text-[#1C202B]">6 proactive words</span> in live
-                call to trigger bloom
+                {planTotal > 0
+                  ? `${planDone} of ${planTotal} FSRS cards completed today`
+                  : 'Generate today’s plan to start daily FSRS & voice practice'}
               </p>
             </div>
             <div className="flex flex-col items-end shrink-0 w-16">
-              <span className="font-mono text-xs font-bold text-[#6A9AE2]">72%</span>
+              <span className="font-mono text-xs font-bold text-[#6A9AE2]">{planPct}%</span>
               <div className="w-full bg-[#EBF2FC] rounded-full h-1.5 mt-1 overflow-hidden">
-                <div className="bg-gradient-to-r from-[#6A9AE2] to-[#58B37C] h-full rounded-full w-[72%]" />
+                <div
+                  className="bg-gradient-to-r from-[#6A9AE2] to-[#58B37C] h-full rounded-full"
+                  style={{ width: `${planPct}%` }}
+                />
               </div>
             </div>
           </button>
@@ -767,8 +747,9 @@ export default function LexiconPlanetPage() {
               />
             </div>
             <p className="font-headline italic text-[13px] text-[#1C202B] leading-snug">
-              &ldquo;Your Tech cluster is budding fast. Let&apos;s practice 3 phrases during
-              lunch!&rdquo;
+              {totalWords > 0
+                ? `“当前词库共收录 ${totalWords} 个单词，待复习 ${stats?.due ?? 0} 个。”`
+                : '“点击右上角词书按钮导入你的第一份 JSON 或 CSV 词表吧！”'}
             </p>
           </div>
         </section>

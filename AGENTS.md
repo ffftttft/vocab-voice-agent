@@ -26,7 +26,9 @@
 - `.venv*/`、`node_modules/`、`dist/`、各种 cache、`*.log`、`tmp/`。
 - `data/` 下的运行时数据（数据库、音频缓存、词书原始文件、记忆文件）。
 - 验证截图、调试产物、临时脚本，如 `docs/design/**/verify/`、`docs/design/**/impl-verify/`。
-- **截图目录绝对不要传上服务器**：`impl-verify/`、`verify/` 只留在本地。服务器只保留把服务跑起来必需的东西（源码、`uv.lock`、生产 `.venv`、`web/dist`、运行时 `data/`、`.env`），其余一律不要。
+- **截图目录绝对不要传上服务器**：`impl-verify/`、`verify/` 只留在本地。服务器只保留把服务跑起来必需的东西（源码、`uv.lock`、生产 `.venv`、`web/node_modules`、`web/dist`、运行时 `data/`、`.env`），其余一律不要。
+- `data/` **入库仅限** `.gitkeep` 与 `*.example.md` 占位；真实 db / 音频缓存 / 词书 / 记忆文件只留本地或服务器运行时，绝不提交。
+- 服务器上因 `UV_DEFAULT_INDEX`（国内镜像）跑 `uv sync` 后，`uv.lock` 可能被改写 registry URL：立刻 `git checkout -- uv.lock` 还原，**不要**把服务器上的 lock 改动提交或拷回仓库。运行产生的 `__pycache__/` 可留，勿入库。
 - 设计稿大文件（`docs/design/` 下的 png/html 原型）如无必要不入库，入库前先确认。
 
 ### 部署前检查清单

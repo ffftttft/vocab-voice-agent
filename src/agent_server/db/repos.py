@@ -12,7 +12,7 @@ SPEC 5.1 Step 2 写的是 `WHERE fsrs_cards.state == 0` 来挑新词，但 py-fs
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -172,10 +172,44 @@ async def count_cards_by_state(session: AsyncSession, user_id: str = DEFAULT_USE
             FSRSCard.due <= utcnow(),
         )
     )
+    learning_count = await session.scalar(
+        select(func.count())
+        .select_from(FSRSCard)
+        .where(
+            FSRSCard.user_id == user_id,
+            FSRSCard.stability.is_not(None),
+            FSRSCard.state == 1,
+        )
+    )
+    review_count = await session.scalar(
+        select(func.count())
+        .select_from(FSRSCard)
+        .where(
+            FSRSCard.user_id == user_id,
+            FSRSCard.stability.is_not(None),
+            FSRSCard.state == 2,
+        )
+    )
+    relearning_count = await session.scalar(
+        select(func.count())
+        .select_from(FSRSCard)
+        .where(
+            FSRSCard.user_id == user_id,
+            FSRSCard.stability.is_not(None),
+            FSRSCard.state == 3,
+        )
+    )
     total = await session.scalar(
         select(func.count()).select_from(FSRSCard).where(FSRSCard.user_id == user_id)
     )
-    return {"new": new_count or 0, "due": due_count or 0, "total": total or 0}
+    return {
+        "new": new_count or 0,
+        "due": due_count or 0,
+        "learning": learning_count or 0,
+        "review": review_count or 0,
+        "relearning": relearning_count or 0,
+        "total": total or 0,
+    }
 
 
 async def get_or_create_plan(
@@ -266,4 +300,7 @@ async def upcoming_due_counts(
         delta = (due.date() - now.date()).days
         if 0 <= delta < days:
             buckets[delta] += 1
-    return [{"date": str(now.date()), "offset": i, "count": buckets[i]} for i in range(days)]
+    return [
+        {"date": (now.date() + timedelta(days=i)).isoformat(), "offset": i, "count": buckets[i]}
+        for i in range(days)
+    ]

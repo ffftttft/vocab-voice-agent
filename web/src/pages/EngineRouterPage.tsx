@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useAppStore } from '../store/useAppStore'
-import { AnimatedNumber, StatusBar } from '../components/ShellComponents'
+import { AnimatedNumber } from '../components/ShellComponents'
 
 export default function EngineRouterPage() {
+  const navigate = useAppStore((s) => s.navigate)
   const studyPlanQuotas = useAppStore((s) => s.studyPlanQuotas)
   const adjustQuota = useAppStore((s) => s.adjustQuota)
   const activeRouterStage = useAppStore((s) => s.activeRouterStage)
@@ -14,9 +15,14 @@ export default function EngineRouterPage() {
   const saveAndHotReloadConfig = useAppStore((s) => s.saveAndHotReloadConfig)
   const voicePersona = useAppStore((s) => s.voicePersona)
   const setVoicePersona = useAppStore((s) => s.setVoicePersona)
+  const autoAudio = useAppStore((s) => s.autoAudio)
+  const setAutoAudio = useAppStore((s) => s.setAutoAudio)
+  const darkMode = useAppStore((s) => s.darkMode)
+  const toggleDarkMode = useAppStore((s) => s.toggleDarkMode)
 
-  const [editingKey, setEditingKey] = useState(false)
   const [reloading, setReloading] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showCustomOverride, setShowCustomOverride] = useState(false)
 
   const stageKey =
     activeRouterStage === 1
@@ -34,7 +40,6 @@ export default function EngineRouterPage() {
             title: 'Qwen-Omni',
             sub: '24kHz S2S',
             icon: 'hub',
-            ws: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
             model: 'qwen-omni-turbo-realtime',
           },
           {
@@ -42,7 +47,6 @@ export default function EngineRouterPage() {
             title: 'Doubao',
             sub: 'SeedDuplex',
             icon: 'waves',
-            ws: 'wss://openspeech.bytedance.com/api/v3/realtime',
             model: 'doubao-realtime-voice-v2',
           },
           {
@@ -50,7 +54,6 @@ export default function EngineRouterPage() {
             title: 'OpenAI S2S',
             sub: 'Realtime API',
             icon: 'cloud_sync',
-            ws: 'wss://api.openai.com/v1/realtime',
             model: 'gpt-4o-realtime-preview',
           },
         ]
@@ -61,23 +64,20 @@ export default function EngineRouterPage() {
               title: 'DeepSeek',
               sub: 'OpenAI Compat',
               icon: 'neurology',
-              ws: 'https://api.deepseek.com/v1',
-              model: 'deepseek-v4.1-flash',
+              model: 'deepseek-chat',
             },
             {
               id: 'qwen_max',
               title: 'Qwen-Max',
-              sub: 'DashScope',
+              sub: 'Structured',
               icon: 'hub',
-              ws: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
               model: 'qwen-max-latest',
             },
             {
               id: 'openai_gpt4o',
               title: 'GPT-4o',
-              sub: 'Structured',
+              sub: 'Reasoning',
               icon: 'auto_awesome',
-              ws: 'https://api.openai.com/v1',
               model: 'gpt-4o-2024-11-20',
             },
           ]
@@ -85,17 +85,15 @@ export default function EngineRouterPage() {
             {
               id: 'edge_tts',
               title: 'Edge-TTS',
-              sub: 'Zero-Cost Neural',
+              sub: 'Neural Stream',
               icon: 'graphic_eq',
-              ws: 'edge-tts://neural-voice-stream',
               model: 'en-US-AndrewMultilingualNeural',
             },
             {
               id: 'cosyvoice',
               title: 'CosyVoice',
-              sub: 'DashScope 24k',
+              sub: '24kHz Neural',
               icon: 'record_voice_over',
-              ws: 'https://dashscope.aliyuncs.com/api/v1/tts',
               model: 'cosyvoice-v2',
             },
             {
@@ -103,39 +101,39 @@ export default function EngineRouterPage() {
               title: 'OpenAI TTS',
               sub: 'tts-1-hd',
               icon: 'volume_up',
-              ws: 'https://api.openai.com/v1/audio/speech',
               model: 'tts-1-hd',
             },
           ]
 
-  const handleHotReload = async () => {
+  const handleSavePreferences = async () => {
     setReloading(true)
     await saveAndHotReloadConfig()
-    window.setTimeout(() => setReloading(false), 600)
+    window.setTimeout(() => setReloading(false), 500)
   }
 
   return (
-    <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] relative overflow-x-hidden flex flex-col pb-28">
-      <StatusBar />
-
+    <div
+      className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] relative overflow-x-hidden flex flex-col pb-28"
+      style={{ paddingTop: 'max(14px, env(safe-area-inset-top, 14px))' }}
+    >
       {/* Header Row */}
-      <header className="w-full px-6 pt-2 pb-2 max-w-md mx-auto flex justify-between items-center z-10">
+      <header className="w-full px-6 pt-1 pb-2 max-w-md mx-auto flex justify-between items-center z-10">
         <div>
           <h1 className="font-headline italic text-[30px] leading-tight font-normal text-[#1C202B] tracking-tight">
-            Engine &amp; Studio
+            Study &amp; Voice
           </h1>
           <p className="text-[12px] font-medium text-[#8C857B] tracking-wide mt-0.5">
-            Runtime Model Hub &amp; FSRS Allocator
+            Daily Pacing, Companion Voice &amp; Preferences
           </p>
         </div>
         <div className="bg-[#E6F5EC] text-[#227248] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-[#58B37C]/20">
           <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C] animate-pulse" />
-          <span className="font-mono text-[12px] font-medium">Registry Active</span>
+          <span className="font-mono text-[12px] font-medium">FSRS Active</span>
         </div>
       </header>
 
       {/* Main Scrollable Canvas */}
-      <div className="flex-1 px-5 pt-2 space-y-5">
+      <div className="flex-1 px-5 pt-2 space-y-4">
         {/* 1. Daily Study Plan & FSRS Quotas Card */}
         <motion.section
           initial={{ opacity: 0, y: 8 }}
@@ -147,7 +145,7 @@ export default function EngineRouterPage() {
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm flex-shrink-0 bg-[#F5E2D4]">
                 <img
-                  alt="Chubby coral-pink clay mascot Pip avatar"
+                  alt="Pip companion avatar"
                   className="w-full h-full object-cover"
                   src="/assets/pip-avatar.png"
                 />
@@ -256,7 +254,7 @@ export default function EngineRouterPage() {
             {/* Tile 4: FSRS Target Ret. */}
             <div className="bg-white rounded-[18px] p-3 shadow-sm border border-[#E9E1D2] flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-[#8C857B]">FSRS Target Ret.</span>
+                <span className="text-[12px] font-semibold text-[#8C857B]">Target Retention</span>
                 <span className="material-symbols-outlined text-[15px] text-[#58B37C]">
                   verified
                 </span>
@@ -264,7 +262,7 @@ export default function EngineRouterPage() {
               <div className="mt-1">
                 <div className="flex items-baseline gap-1">
                   <span className="text-xl font-bold font-body text-[#1C202B]">90%</span>
-                  <span className="text-[12px] text-[#5A554C]">retention</span>
+                  <span className="text-[12px] text-[#5A554C]">recall</span>
                 </div>
                 <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-[#E6F5EC] text-[#236B42] text-[12px] font-mono font-medium">
                   Fuzzing: ON
@@ -274,309 +272,295 @@ export default function EngineRouterPage() {
           </div>
         </motion.section>
 
-        {/* 2. Zero-Hardcode 3-Stage Model Router Section */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-headline italic text-[20px] text-[#1C202B] leading-tight">
-                ProviderRegistry Hot-Swap
-              </h2>
-              <p className="text-[12px] text-[#8C857B] font-medium">
-                Multi-engine fallback &amp; zero hardcode
-              </p>
+        {/* 2. Voice Companion & Study Experience Card */}
+        <section className="bg-white rounded-[26px] p-4.5 shadow-sm border border-[#ECE5D8] space-y-4">
+          <div>
+            <div className="text-[12px] font-semibold text-[#8C857B] mb-1.5 flex justify-between items-center">
+              <span>Pip&apos;s Vocal Persona</span>
+              <span className="text-[11px] font-mono text-[#2B579A] bg-[#EBF2FC] px-2 py-0.5 rounded">
+                Full-Duplex Voice
+              </span>
             </div>
-            <span className="text-[12px] font-mono bg-[#EFE6D5] px-2.5 py-1 rounded-full text-[#5A554C] font-medium">
-              Stage {activeRouterStage} of 3
-            </span>
-          </div>
-
-          {/* Stage Filter Tabs */}
-          <div className="bg-[#ECE4D4] p-1 rounded-full flex items-center justify-between gap-1 text-[12px] font-semibold shadow-inner">
-            {[
-              { stage: 1 as const, label: '1. S2S Duplex', icon: 'graphic_eq' },
-              { stage: 2 as const, label: '2. Text LLM', icon: '' },
-              { stage: 3 as const, label: '3. TTS Audio', icon: '' },
-            ].map((tab) => {
-              const active = activeRouterStage === tab.stage
-              return (
-                <button
-                  key={tab.stage}
-                  type="button"
-                  onClick={() => setActiveRouterStage(tab.stage)}
-                  className={`flex-1 py-2 px-2 min-h-[40px] rounded-full flex items-center justify-center gap-1 press-scale tap-target-expand ${
-                    active ? 'bg-[#1C202B] text-white shadow-sm' : 'text-[#5A554C]'
-                  }`}
-                >
-                  {tab.icon && (
-                    <span className="material-symbols-outlined text-[14px]">{tab.icon}</span>
-                  )}
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Active Stage Configuration Card */}
-          <motion.div
-            key={activeRouterStage}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-            className="bg-white rounded-[26px] p-4.5 shadow-sm border border-[#ECE5D8] space-y-4"
-          >
-            {/* Provider Selector Row */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-semibold text-[#8C857B] uppercase tracking-wider">
-                  Engine Provider Candidate
-                </span>
-                <span className="text-[12px] font-mono text-[#5A554C]">
-                  fallback_priority: [1, 2, 3]
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {candidates.map((cand) => {
-                  const selected = currentStageConfig.provider === cand.id
-                  return (
-                    <button
-                      key={cand.id}
-                      type="button"
-                      onClick={() => {
-                        updateStageField(stageKey, 'provider', cand.id)
-                        updateStageField(
-                          stageKey,
-                          activeRouterStage === 1 ? 'ws_url' : 'base_url',
-                          cand.ws,
-                        )
-                        updateStageField(stageKey, 'model_name', cand.model)
-                        toast.success(`Selected ${cand.title} (${cand.model})`)
-                      }}
-                      className={`relative rounded-[18px] p-2.5 flex flex-col justify-between h-[92px] text-left press-scale ${
-                        selected
-                          ? 'bg-[#FFF7F4] border-2 border-[#E5735D] shadow-xs'
-                          : 'bg-[#FBF9F5] border border-[#E8E1D3] opacity-85'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between w-full">
-                        <span
-                          className={`material-symbols-outlined text-[18px] ${
-                            selected ? 'text-[#E5735D]' : 'text-[#8C857B]'
-                          }`}
-                        >
-                          {cand.icon}
-                        </span>
-                        {selected && (
-                          <span className="inline-flex items-center gap-0.5 bg-[#58B37C] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                            <span className="material-symbols-outlined text-[10px]">check</span>
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-[12px] font-bold text-[#1C202B] leading-tight">
-                          {cand.title}
-                        </div>
-                        <div
-                          className={`text-[11px] font-mono mt-0.5 ${
-                            selected ? 'text-[#E5735D]' : 'text-[#8C857B]'
-                          }`}
-                        >
-                          {cand.sub}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Clean Form Fields */}
-            <div className="space-y-2.5 pt-1 border-t border-[#F2ECE1]">
-              {/* WS / Base Endpoint */}
-              <div>
-                <div className="text-[12px] font-semibold text-[#8C857B] mb-1 flex items-center justify-between">
-                  <span>{activeRouterStage === 1 ? 'WS Endpoint' : 'Endpoint Base URL'}</span>
-                  <span className="text-[12px] text-[#58B37C] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" /> Connected
-                  </span>
-                </div>
-                <div className="bg-[#F9F6F0] rounded-[14px] px-3 py-2 flex items-center justify-between border border-[#EBE3D3]">
-                  <span className="font-mono text-[12px] text-[#1C202B] truncate pr-2 min-w-0">
-                    {activeRouterStage === 1
-                      ? currentStageConfig.ws_url ||
-                        'wss://dashscope.aliyuncs.com/api-ws/v1/realtime'
-                      : currentStageConfig.base_url || 'https://api.deepseek.com/v1'}
-                  </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(['Chelsie', 'Ethan', 'Serena'] as const).map((persona) => {
+                const active = voicePersona === persona
+                return (
                   <button
+                    key={persona}
                     type="button"
-                    aria-label="Copy endpoint"
                     onClick={() => {
-                      const val =
-                        activeRouterStage === 1
-                          ? currentStageConfig.ws_url
-                          : currentStageConfig.base_url
-                      void navigator.clipboard?.writeText(val)
-                      toast.success('Endpoint URL copied to clipboard')
+                      setVoicePersona(persona)
+                      updateStageField('realtime_voice', 'voice_id', persona)
                     }}
-                    className="tap-target-expand text-[#8C857B] p-1 press-scale-sm"
+                    className={`py-2.5 px-2 min-h-[44px] rounded-xl text-[12px] flex items-center justify-center gap-1.5 press-scale tap-target-expand ${
+                      active
+                        ? 'bg-[#1C202B] text-white font-semibold shadow-xs'
+                        : 'bg-[#F9F6F0] border border-[#EBE3D3] text-[#5A554C] font-medium'
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                    {active && <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />}
+                    <span>{persona}</span>
                   </button>
-                </div>
-              </div>
-
-              {/* Model Name */}
-              <div>
-                <div className="block text-[12px] font-semibold text-[#8C857B] mb-1">
-                  Model Name
-                </div>
-                <div className="bg-[#F9F6F0] rounded-[14px] px-3 py-2 flex items-center justify-between border border-[#EBE3D3]">
-                  <span className="font-mono text-[12px] text-[#1C202B] font-medium truncate">
-                    {currentStageConfig.model_name}
-                  </span>
-                  <span className="px-2 py-0.5 bg-[#E6DEC8]/60 text-[#5A554C] rounded text-[11px] font-mono shrink-0">
-                    duplex_native
-                  </span>
-                </div>
-              </div>
-
-              {/* API Key */}
-              <div>
-                <div className="block text-[12px] font-semibold text-[#8C857B] mb-1">API Key</div>
-                <div className="bg-[#F9F6F0] rounded-[14px] px-3 py-2 flex items-center justify-between border border-[#EBE3D3]">
-                  {editingKey ? (
-                    <input
-                      type="text"
-                      value={currentStageConfig.api_key}
-                      onChange={(e) => updateStageField(stageKey, 'api_key', e.target.value)}
-                      className="font-mono text-[16px] text-[#1C202B] bg-transparent w-full focus:outline-none"
-                    />
-                  ) : (
-                    <span className="font-mono text-[12px] text-[#1C202B] tracking-widest">
-                      {currentStageConfig.api_key || 'sk-8f••••••••••••••••9a2c'}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setEditingKey(!editingKey)}
-                    className="tap-target-expand text-xs font-semibold text-[#E5735D] bg-[#FCECE8] px-2.5 py-1 rounded-md press-scale shrink-0 ml-2"
-                  >
-                    {editingKey ? 'Done' : 'Edit'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Voice Persona Selector */}
-              <div>
-                <div className="text-[12px] font-semibold text-[#8C857B] mb-1.5 flex justify-between items-center">
-                  <span>Voice Persona &amp; Sampling</span>
-                  <span className="text-[11px] font-mono text-[#2B579A] bg-[#EBF2FC] px-2 py-0.5 rounded">
-                    16kHz In / 24kHz Out
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(['Chelsie', 'Ethan', 'Serena'] as const).map((persona) => {
-                    const active = voicePersona === persona
-                    return (
-                      <button
-                        key={persona}
-                        type="button"
-                        onClick={() => {
-                          setVoicePersona(persona)
-                          updateStageField('realtime_voice', 'voice_id', persona)
-                        }}
-                        className={`py-2 px-2 min-h-[42px] rounded-xl text-[12px] flex items-center justify-center gap-1.5 press-scale tap-target-expand ${
-                          active
-                            ? 'bg-[#1C202B] text-white font-semibold shadow-xs'
-                            : 'bg-[#F9F6F0] border border-[#EBE3D3] text-[#5A554C] font-medium'
-                        }`}
-                      >
-                        {active && <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />}
-                        <span>{persona}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+                )
+              })}
             </div>
-          </motion.div>
-        </section>
+          </div>
 
-        {/* 3. Quick Peek Summary Strip for Stage 2 & Stage 3 */}
-        <section className="space-y-1.5">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[12px] font-semibold text-[#8C857B]">
-              Secondary Pipeline Stages
-            </span>
+          {/* Sprint Auto-Audio & Appearance Toggles */}
+          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#F2ECE1]">
             <button
               type="button"
-              onClick={() => toast('Fallback pipeline priority verified: [1 → 2 → 3]')}
-              className="tap-target-expand text-[12px] text-[#5A554C] underline decoration-dotted press-scale"
+              onClick={() => {
+                setAutoAudio(!autoAudio)
+                toast(autoAudio ? 'Auto Sentence Audio OFF' : 'Auto Sentence Audio ON')
+              }}
+              className="bg-[#F9F6F0] border border-[#EBE3D3] rounded-2xl p-3 text-left flex items-center justify-between press-scale min-h-[54px]"
             >
-              Reorder pipelines
+              <div>
+                <div className="text-xs font-bold text-[#1C202B]">Sprint Audio</div>
+                <div className="text-[11px] text-[#8C857B]">
+                  {autoAudio ? 'Auto-play ON' : 'Manual tap'}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[18px] text-[#1C202B]">
+                {autoAudio ? 'volume_up' : 'volume_off'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                toggleDarkMode()
+                toast(darkMode ? 'Daylight Alabaster Theme' : 'Nocturnal Parchment Theme')
+              }}
+              className="bg-[#F9F6F0] border border-[#EBE3D3] rounded-2xl p-3 text-left flex items-center justify-between press-scale min-h-[54px]"
+            >
+              <div>
+                <div className="text-xs font-bold text-[#1C202B]">Appearance</div>
+                <div className="text-[11px] text-[#8C857B]">
+                  {darkMode ? 'Nocturnal Dark' : 'Warm Daylight'}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[18px] text-[#1C202B]">
+                {darkMode ? 'light_mode' : 'dark_mode'}
+              </span>
             </button>
           </div>
-          <div className="flex flex-col gap-1.5">
+
+          {/* Quick Study Shortcuts */}
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               type="button"
-              onClick={() => setActiveRouterStage(2)}
-              className="w-full bg-[#EFE6D5]/80 border border-[#E2D7C2] rounded-2xl p-2.5 px-3 min-h-[44px] flex items-center justify-between press-scale"
+              onClick={() => navigate('13-memory-editor')}
+              className="bg-[#EFE6D5]/70 border border-[#E2D7C2] rounded-2xl p-2.5 px-3 min-h-[44px] flex items-center justify-between text-xs font-semibold text-[#1C202B] press-scale"
             >
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-white/80 text-[11px] font-bold text-[#1C202B] flex items-center justify-center">
-                  2
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-[#5A554C]">
+                  description
                 </span>
-                <span className="text-xs font-semibold text-[#1C202B]">Text LLM</span>
-              </div>
-              <div className="font-mono text-[12px] text-[#5A554C] flex items-center gap-1">
-                <span>{modelStages.text_llm.model_name}</span>
-                <span className="text-[#8C857B]">· T:0.7</span>
-              </div>
+                <span>Memory (.md)</span>
+              </span>
+              <span className="material-symbols-outlined text-[14px] text-[#8C857B]">
+                chevron_right
+              </span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveRouterStage(3)}
-              className="w-full bg-[#EFE6D5]/80 border border-[#E2D7C2] rounded-2xl p-2.5 px-3 min-h-[44px] flex items-center justify-between press-scale"
+              onClick={() => navigate('06-wordbooks-tagging')}
+              className="bg-[#EFE6D5]/70 border border-[#E2D7C2] rounded-2xl p-2.5 px-3 min-h-[44px] flex items-center justify-between text-xs font-semibold text-[#1C202B] press-scale"
             >
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-white/80 text-[11px] font-bold text-[#1C202B] flex items-center justify-center">
-                  3
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-[#5A554C]">
+                  upload_file
                 </span>
-                <span className="text-xs font-semibold text-[#1C202B]">TTS Audio</span>
-              </div>
-              <div className="font-mono text-[12px] text-[#5A554C] flex items-center gap-1">
-                <span>edge_tts · AndrewNeural</span>
-                <span className="text-[#8C857B]">· 1,240 c</span>
-              </div>
+                <span>Wordbooks</span>
+              </span>
+              <span className="material-symbols-outlined text-[14px] text-[#8C857B]">
+                chevron_right
+              </span>
             </button>
           </div>
         </section>
 
-        {/* 4. Full-Width Primary Action Button */}
-        <div className="pt-1 pb-2">
+        {/* 3. Primary Save Action Button */}
+        <div className="pt-1">
           <button
             type="button"
-            onClick={() => void handleHotReload()}
-            className="w-full h-[54px] rounded-full bg-[#1C202B] text-white font-semibold text-[15px] shadow-md flex items-center justify-center gap-2 press-scale cursor-pointer"
+            onClick={() => void handleSavePreferences()}
+            className="w-full h-[52px] rounded-full bg-[#1C202B] text-white font-semibold text-[14.5px] shadow-md flex items-center justify-center gap-2 press-scale cursor-pointer"
           >
             <span
-              className={`material-symbols-outlined text-[20px] transition-transform duration-300 ${
+              className={`material-symbols-outlined text-[19px] transition-transform duration-300 ${
                 reloading ? 'rotate-180' : ''
               }`}
             >
-              sync
+              check_circle
             </span>
             <span>
-              {reloading
-                ? 'Reloading Router Registry...'
-                : 'Save & Hot-Reload ProviderRegistry'}
+              {reloading ? 'Saving Study Preferences...' : 'Save Study & Voice Preferences'}
             </span>
           </button>
-          <p className="text-center text-[12px] font-mono text-[#8C857B] mt-2">
-            Zero-downtime hot swap via WebSocket handshake
-          </p>
         </div>
+
+        {/* 4. Collapsible Advanced / Developer Engine Settings (Default Closed) */}
+        <section className="pt-2">
+          <button
+            type="button"
+            aria-expanded={showAdvanced}
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full bg-[#EFECE4] border border-[#E2DACB] rounded-2xl px-4 py-3 min-h-[46px] flex items-center justify-between text-left press-scale"
+          >
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[17px] text-[#5A554C]">
+                developer_board
+              </span>
+              <div>
+                <span className="text-xs font-semibold text-[#1C202B] block">
+                  Advanced / Developer Model Routing
+                </span>
+                <span className="text-[10.5px] text-[#8C857B] font-mono">
+                  3-Stage AI Pipeline (S2S · Text LLM · TTS)
+                </span>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-[18px] text-[#5A554C]">
+              {showAdvanced ? 'expand_less' : 'expand_more'}
+            </span>
+          </button>
+
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2.5 bg-white rounded-[24px] p-4 border border-[#ECE5D8] shadow-xs space-y-3.5">
+                  {/* Stage Filter Tabs */}
+                  <div className="bg-[#ECE4D4] p-1 rounded-full flex items-center justify-between gap-1 text-[12px] font-semibold">
+                    {[
+                      { stage: 1 as const, label: '1. S2S Duplex' },
+                      { stage: 2 as const, label: '2. Text LLM' },
+                      { stage: 3 as const, label: '3. TTS Audio' },
+                    ].map((tab) => {
+                      const active = activeRouterStage === tab.stage
+                      return (
+                        <button
+                          key={tab.stage}
+                          type="button"
+                          onClick={() => setActiveRouterStage(tab.stage)}
+                          className={`flex-1 py-2 px-2 min-h-[38px] rounded-full flex items-center justify-center press-scale ${
+                            active ? 'bg-[#1C202B] text-white shadow-sm' : 'text-[#5A554C]'
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Provider Candidates */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {candidates.map((cand) => {
+                      const selected = currentStageConfig.provider === cand.id
+                      return (
+                        <button
+                          key={cand.id}
+                          type="button"
+                          onClick={() => {
+                            updateStageField(stageKey, 'provider', cand.id)
+                            updateStageField(stageKey, 'model_name', cand.model)
+                            toast.success(`Selected ${cand.title} (${cand.model})`)
+                          }}
+                          className={`relative rounded-[16px] p-2.5 flex flex-col justify-between h-[84px] text-left press-scale ${
+                            selected
+                              ? 'bg-[#FFF7F4] border-2 border-[#E5735D] shadow-xs'
+                              : 'bg-[#FBF9F5] border border-[#E8E1D3] opacity-85'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between w-full">
+                            <span
+                              className={`material-symbols-outlined text-[16px] ${
+                                selected ? 'text-[#E5735D]' : 'text-[#8C857B]'
+                              }`}
+                            >
+                              {cand.icon}
+                            </span>
+                            {selected && (
+                              <span className="inline-flex items-center bg-[#58B37C] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-full">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-[11.5px] font-bold text-[#1C202B] leading-tight">
+                              {cand.title}
+                            </div>
+                            <div className="text-[10px] font-mono text-[#8C857B] mt-0.5">
+                              {cand.sub}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Active Model Name */}
+                  <div className="bg-[#F9F6F0] rounded-[14px] px-3 py-2 flex items-center justify-between border border-[#EBE3D3]">
+                    <span className="text-[11px] font-semibold text-[#8C857B]">Active Model</span>
+                    <span className="font-mono text-[12px] text-[#1C202B] font-medium truncate">
+                      {currentStageConfig.model_name}
+                    </span>
+                  </div>
+
+                  {/* Optional Custom Override Toggle (Hidden by default) */}
+                  <div className="pt-1 border-t border-[#F2ECE1]">
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomOverride(!showCustomOverride)}
+                      className="text-[11px] font-mono text-[#8C857B] underline decoration-dotted press-scale"
+                    >
+                      {showCustomOverride
+                        ? 'Hide custom endpoint / key override'
+                        : 'Override server .env endpoint or key (optional)'}
+                    </button>
+
+                    {showCustomOverride && (
+                      <div className="mt-2.5 space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Custom Base / WS URL (leave blank for server default)"
+                          value={
+                            activeRouterStage === 1
+                              ? currentStageConfig.ws_url
+                              : currentStageConfig.base_url
+                          }
+                          onChange={(e) =>
+                            updateStageField(
+                              stageKey,
+                              activeRouterStage === 1 ? 'ws_url' : 'base_url',
+                              e.target.value,
+                            )
+                          }
+                          className="w-full font-mono text-[16px] text-[#1C202B] bg-[#F9F6F0] rounded-xl px-3 py-2 border border-[#EBE3D3] focus:outline-none"
+                        />
+                        <input
+                          type="password"
+                          placeholder="Custom API Key (managed via server .env)"
+                          value={currentStageConfig.api_key}
+                          onChange={(e) => updateStageField(stageKey, 'api_key', e.target.value)}
+                          className="w-full font-mono text-[16px] text-[#1C202B] bg-[#F9F6F0] rounded-xl px-3 py-2 border border-[#EBE3D3] focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
       </div>
     </div>
   )

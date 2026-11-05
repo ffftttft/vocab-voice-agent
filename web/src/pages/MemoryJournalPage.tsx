@@ -3,59 +3,27 @@ import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { useAppStore } from '../store/useAppStore'
-import { StatusBar } from '../components/ShellComponents'
 
-const JOURNAL_DAYS = [
-  {
-    day: 'M',
-    emoji: '🌱',
-    bg: 'bg-[#E8F5E9] border-[#C8E6C9]',
-    summary: 'Mon · 94% Vocal Flow · 14 words bloomed',
-  },
-  {
-    day: 'T',
-    emoji: '💧',
-    bg: 'bg-[#EBF2FC] border-[#BBDEFB]',
-    summary: 'Tue · 92% Vocal Flow · 12 words bloomed',
-  },
-  {
-    day: 'W',
-    emoji: '⚡️',
-    bg: 'bg-[#FCECE8] border-[#FFCDD2]',
-    badge: '3',
-    labelClass: 'font-bold text-[#E5735D]',
-    summary: 'Wed · 3 Recasts logged during Architecture Roleplay',
-  },
-  {
-    day: 'T',
-    emoji: '✨',
-    bg: 'bg-[#F3E5F5] border-[#E1BEE7]',
-    summary: 'Thu · 95% Vocal Flow · 18 words bloomed',
-  },
-  {
-    day: 'F',
-    emoji: '🌸',
-    bg: 'bg-[#FCE4EC] border-[#F8BBD0]',
-    summary: 'Fri · 96% Vocal Flow · Zero grammar slips',
-  },
-  {
-    day: 'S',
-    emoji: '🍯',
-    bg: 'bg-[#FFF9C4] border-[#FFE082]',
-    summary: 'Sat · 25m Deep Dive completed',
-  },
-  {
-    day: 'S',
-    emoji: '☀️',
-    bg: 'bg-[#FFF8E1] border-[#FFE082] ring-2 ring-[#1C202B] ring-offset-2 ring-offset-white shadow-md',
-    labelClass: 'font-bold text-[#1C202B]',
-    summary: 'Sun (Today) · Post-Compaction Journal Ready',
-  },
+const DAY_EMOJIS = ['☀️', '🌱', '💧', '✨', '🌸', '🍯', '🌿']
+const DAY_BGS = [
+  'bg-[#FFF8E1] border-[#FFE082] ring-2 ring-[#1C202B] ring-offset-2 ring-offset-white shadow-md',
+  'bg-[#E8F5E9] border-[#C8E6C9]',
+  'bg-[#EBF2FC] border-[#BBDEFB]',
+  'bg-[#F3E5F5] border-[#E1BEE7]',
+  'bg-[#FCE4EC] border-[#F8BBD0]',
+  'bg-[#FFF9C4] border-[#FFE082]',
+  'bg-[#E8F5E9] border-[#C8E6C9]',
 ]
+
+function stripHtmlComments(md: string): string {
+  return md.replace(/<!--[\s\S]*?-->/g, '').trim()
+}
 
 export default function MemoryJournalPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
   const navigate = useAppStore((s) => s.navigate)
+  const stats = useAppStore((s) => s.stats)
+  const plan = useAppStore((s) => s.plan)
   const mistakes = useAppStore((s) => s.mistakes)
   const activeMemoryDoc = useAppStore((s) => s.activeMemoryDoc)
   const setActiveMemoryDoc = useAppStore((s) => s.setActiveMemoryDoc)
@@ -82,13 +50,25 @@ export default function MemoryJournalPage() {
   // ============================================================================
   if (currentScreen === '13-memory-editor') {
     const activeContent = activeMemoryDoc === 'user_profile' ? userProfileMd : errorPatternsMd
+    const otherContent = activeMemoryDoc === 'user_profile' ? errorPatternsMd : userProfileMd
     const lineCount = activeContent.split('\n').length
-    const wordCount = activeContent.trim().split(/\s+/).filter(Boolean).length
+    const charCount = activeContent.trim().length
+    const kbSize = (new Blob([activeContent]).size / 1024).toFixed(1)
+    const visibleLines = stripHtmlComments(activeContent)
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+
+    const otherPreview =
+      stripHtmlComments(otherContent)
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith('#'))
+        .slice(0, 2)
+        .join(' · ') || '点击切换查看或编辑该记忆文档'
 
     return (
       <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] flex flex-col relative overflow-x-hidden">
-        <StatusBar />
-
         {/* 2. Header Bar */}
         <header className="px-5 pt-2 pb-3 flex items-center justify-between gap-2 z-40">
           <button
@@ -125,7 +105,7 @@ export default function MemoryJournalPage() {
                 }`}
               />
             </span>
-            <span>{justSaved ? 'Saved ✓' : unsavedEdits ? 'Unsaved' : 'Synced · 2.4 KB'}</span>
+            <span>{justSaved ? 'Saved ✓' : unsavedEdits ? 'Unsaved' : `Synced · ${kbSize} KB`}</span>
           </div>
         </header>
 
@@ -215,8 +195,7 @@ export default function MemoryJournalPage() {
             </div>
 
             <p className="font-body text-[12px] text-[#5D554B] leading-relaxed">
-              Injected into Daily Planner (for authentic personal scenarios) and Voice Orchestrator.
-              Manually editable anytime—no black-box vector DB.
+              注入 Daily Planner 与实时语音会话的真实 Markdown 记忆文件，可随时直接编辑保存。
             </p>
           </section>
 
@@ -235,7 +214,7 @@ export default function MemoryJournalPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    insertMarkdownSnippet('## New Scenario Focus')
+                    insertMarkdownSnippet('## 新增语境备注')
                     setUnsavedEdits(true)
                   }}
                   className="tap-target-expand bg-[#F5F2EA] text-stone-700 text-[11px] font-mono px-2.5 py-1 rounded-md border border-[#E8E2D4] press-scale"
@@ -245,7 +224,8 @@ export default function MemoryJournalPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    insertMarkdownSnippet('- [Nov 4] Practiced idiomatic post-mortem transitions.')
+                    const todayIso = new Date().toISOString().slice(0, 10)
+                    insertMarkdownSnippet(`- ${todayIso} `)
                     setUnsavedEdits(true)
                   }}
                   className="tap-target-expand bg-[#F5F2EA] text-stone-700 text-[11px] font-mono px-2.5 py-1 rounded-md border border-[#E8E2D4] press-scale"
@@ -263,14 +243,14 @@ export default function MemoryJournalPage() {
               </div>
             </div>
 
-            {/* Styled Markdown View or Editable Textarea (font-size: 16px to prevent iOS zoom) */}
-            {memoryViewMode === 'structured' ? (
+            {/* Real Markdown View or Editable Textarea */}
+            {memoryViewMode === 'raw' ? (
               <div className="space-y-2.5">
                 <label
                   htmlFor="markdown-memory-textarea"
                   className="block text-[11px] font-mono text-[#8C857B]"
                 >
-                  Direct Plaintext Editor (16px iOS Safe Input):
+                  Direct Plaintext Editor ({activeMemoryDoc}.md):
                 </label>
                 <textarea
                   id="markdown-memory-textarea"
@@ -279,120 +259,66 @@ export default function MemoryJournalPage() {
                     updateMemoryContent(e.target.value)
                     setUnsavedEdits(true)
                   }}
-                  rows={10}
+                  rows={11}
                   className="w-full font-mono text-[16px] leading-relaxed text-[#1C202B] bg-[#FAF7F2] rounded-2xl p-3.5 border border-[#EBE4D8] focus:outline-none focus:border-[#1C202B]"
                 />
               </div>
-            ) : activeMemoryDoc === 'user_profile' ? (
-              <div
-                onClick={() => setMemoryViewMode('structured')}
-                className="relative min-h-[255px] font-mono text-[12px] leading-relaxed text-[#2C2723] space-y-2.5 cursor-text"
-              >
-                <div>
-                  <div className="text-[#874116] font-headline font-semibold text-[15px] tracking-normal mb-1 flex items-center gap-1.5">
-                    <span className="text-stone-300 font-mono text-xs select-none">#</span>
-                    <span>User Persona &amp; Context</span>
-                  </div>
-                  <div className="pl-2 space-y-1">
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-stone-400 select-none">-</span>
-                      <span>
-                        <strong className="font-semibold text-stone-800">Role:</strong> Senior
-                        Backend &amp; AI Agent Engineer
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-stone-400 select-none">-</span>
-                      <span>
-                        <strong className="font-semibold text-stone-800">Style:</strong> Prefers
-                        deterministic Python harnesses, clean async SQLite, and concise technical
-                        English.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-1.5">
-                  <div className="text-[#874116] font-headline font-semibold text-[14px] tracking-normal mb-1 flex items-center gap-1.5">
-                    <span className="text-stone-300 font-mono text-xs select-none">##</span>
-                    <span>Active Projects &amp; Daily Scenarios</span>
-                  </div>
-                  <div className="pl-2 space-y-1">
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-stone-400 select-none">-</span>
-                      <span>
-                        Building a custom FSRS + Realtime S2S English Agent (vocab-voice-agent).
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-stone-400 select-none">-</span>
-                      <span>
-                        Leading payment webhook microservice migration &amp; API deprecation RFC.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-1.5">
-                  <div className="text-[#874116] font-headline font-semibold text-[14px] tracking-normal mb-1 flex items-center gap-1.5">
-                    <span className="text-stone-300 font-mono text-xs select-none">##</span>
-                    <span>Recent Life &amp; Work Updates (Auto-Compacted)</span>
-                  </div>
-                  <div className="pl-2 space-y-1.5">
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-stone-400 select-none">-</span>
-                      <span>
-                        <span className="text-[#236B42] bg-[#E6F5EC] border border-[#D0ECC2]/50 px-1 py-0.5 rounded text-[11px] font-medium mr-1">
-                          [Nov 4]
-                        </span>
-                        Shipping payment webhook v2 next Friday; aligning rate-limit rules with
-                        leads.
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-stone-400 select-none">-</span>
-                      <span>
-                        <span className="text-[#236B42] bg-[#E6F5EC] border border-[#D0ECC2]/50 px-1 py-0.5 rounded text-[11px] font-medium mr-1">
-                          [Nov 2]
-                        </span>
-                        Discussed Web Audio 16kHz/24kHz PCM resampling on iOS Safari.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 text-stone-400 pl-2">
-                  <span className="text-stone-300 select-none">-</span>
-                  <span className="w-1.5 h-3.5 bg-[#1C202B] inline-block animate-pulse" />
-                </div>
-              </div>
             ) : (
               <div
-                onClick={() => setMemoryViewMode('structured')}
-                className="relative min-h-[255px] font-mono text-[12px] leading-relaxed text-[#2C2723] space-y-2.5 cursor-text"
+                onClick={() => setMemoryViewMode('raw')}
+                className="relative min-h-[240px] font-mono text-[12px] leading-relaxed text-[#2C2723] space-y-2 cursor-text"
               >
-                <div>
-                  <div className="text-[#A83825] font-headline font-semibold text-[15px] mb-1">
-                    # Active Linguistic Blindspots (Top 15)
-                  </div>
-                  <div className="pl-2 space-y-2">
-                    <div>
-                      <span className="text-[#A83825] font-bold">1. [PRONUNCIATION]</span>{' '}
-                      3-syllable -ate verbs stress: <code>deprecate</code> → /ˈdeprəkeɪt/ (1st
-                      syllable DEP).
-                    </div>
-                    <div>
-                      <span className="text-[#2B579A] font-bold">2. [GRAMMAR]</span>{' '}
-                      First-conditional clauses in post-mortems: use present simple (&ldquo;If the
-                      gateway times out...&rdquo;).
-                    </div>
-                    <div>
-                      <span className="text-[#236B42] font-bold">3. [WORD_CHOICE]</span> Prefer
-                      domain adjectives (<code>idempotent</code>, <code>ephemeral</code>) over
-                      informal compounds.
-                    </div>
-                  </div>
-                </div>
+                {visibleLines.length === 0 ? (
+                  <p className="text-stone-400 italic">暂无内容，点击此处进入编辑模式…</p>
+                ) : (
+                  visibleLines.map((line, idx) => {
+                    if (line.startsWith('# ')) {
+                      return (
+                        <div
+                          key={idx}
+                          className="text-[#874116] font-headline font-semibold text-[15px] tracking-normal pt-1 flex items-center gap-1.5"
+                        >
+                          <span className="text-stone-300 font-mono text-xs select-none">#</span>
+                          <span>{line.slice(2)}</span>
+                        </div>
+                      )
+                    }
+                    if (line.startsWith('## ')) {
+                      return (
+                        <div
+                          key={idx}
+                          className="text-[#874116] font-headline font-semibold text-[14px] tracking-normal pt-1.5 flex items-center gap-1.5"
+                        >
+                          <span className="text-stone-300 font-mono text-xs select-none">##</span>
+                          <span>{line.slice(3)}</span>
+                        </div>
+                      )
+                    }
+                    if (line.startsWith('> ')) {
+                      return (
+                        <div
+                          key={idx}
+                          className="pl-2.5 border-l-2 border-[#E2D7C1] text-[#7A7265] text-[11.5px]"
+                        >
+                          {line.slice(2)}
+                        </div>
+                      )
+                    }
+                    if (line.startsWith('- ')) {
+                      return (
+                        <div key={idx} className="pl-2 flex items-start gap-1.5">
+                          <span className="text-stone-400 select-none">-</span>
+                          <span>{line.slice(2)}</span>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div key={idx} className="pl-2">
+                        {line}
+                      </div>
+                    )
+                  })
+                )}
               </div>
             )}
 
@@ -401,13 +327,13 @@ export default function MemoryJournalPage() {
               <div className="flex items-center gap-2">
                 <span>Lines: {lineCount}</span>
                 <span className="text-stone-300">·</span>
-                <span>Words: {wordCount}</span>
+                <span>Chars: {charCount}</span>
                 <span className="text-stone-300">·</span>
                 <span>UTF-8</span>
               </div>
               <div className="flex items-center gap-1 text-stone-500 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>Ln 14, Col 62</span>
+                <span>{kbSize} KB</span>
               </div>
             </div>
           </section>
@@ -430,9 +356,6 @@ export default function MemoryJournalPage() {
                 <span className="font-mono text-[12px] font-semibold truncate">
                   {activeMemoryDoc === 'user_profile' ? 'error_patterns.md' : 'user_profile.md'}
                 </span>
-                <span className="text-[10.5px] bg-stone-200/80 px-1.5 py-0.5 rounded text-stone-600 font-mono">
-                  12/15 Slots
-                </span>
               </div>
               <div className="text-[11.5px] font-body font-semibold text-stone-600 flex items-center gap-0.5">
                 <span>Switch</span>
@@ -440,10 +363,7 @@ export default function MemoryJournalPage() {
               </div>
             </div>
             <div className="font-mono text-[11px] text-stone-600 line-clamp-2 bg-white/70 p-2 rounded-xl border border-stone-200/50 leading-relaxed">
-              <span className="text-[#A83825] font-semibold">1. [PRONUNCIATION]</span> 3-syllable
-              -ate verbs stress (/ˈdeprəkeɪt/) ·{' '}
-              <span className="text-[#2B579A] font-semibold">2. [GRAMMAR]</span> Past counterfactual
-              modals in sprint reviews...
+              {otherPreview}
             </div>
           </button>
         </div>
@@ -493,10 +413,43 @@ export default function MemoryJournalPage() {
     setPlayingClipId(null)
   }
 
+  const upcomingDays =
+    stats?.upcoming && stats.upcoming.length === 7
+      ? stats.upcoming.map((u, idx) => {
+          const dt = new Date(`${u.date}T00:00:00`)
+          const dayLetter = Number.isNaN(dt.getTime())
+            ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'][(new Date().getDay() + idx) % 7]
+            : ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dt.getDay()]
+          return {
+            day: dayLetter,
+            date: u.date,
+            count: u.count,
+            emoji: DAY_EMOJIS[idx % DAY_EMOJIS.length],
+            bg: DAY_BGS[idx % DAY_BGS.length],
+            isToday: idx === 0,
+          }
+        })
+      : Array.from({ length: 7 }, (_, idx) => {
+          const dt = new Date()
+          dt.setDate(dt.getDate() + idx)
+          return {
+            day: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dt.getDay()],
+            date: dt.toISOString().slice(0, 10),
+            count: 0,
+            emoji: DAY_EMOJIS[idx % DAY_EMOJIS.length],
+            bg: DAY_BGS[idx % DAY_BGS.length],
+            isToday: idx === 0,
+          }
+        })
+
+  const profileBullets = stripHtmlComments(userProfileMd)
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('- '))
+    .map((l) => l.replace(/^-\s*/, ''))
+
   return (
     <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] relative flex flex-col pb-32 overflow-x-hidden">
-      <StatusBar />
-
       {/* Header Row (Journal Title + Segmented Switcher) */}
       <div className="px-6 pt-2 pb-2 flex justify-between items-center">
         <div className="flex items-baseline space-x-2">
@@ -516,10 +469,7 @@ export default function MemoryJournalPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setPeriodTab('month')
-              toast('Monthly Fluency Overview · 92.8% Average Retention')
-            }}
+            onClick={() => setPeriodTab('month')}
             className={`font-body text-xs font-semibold px-3 py-1.5 min-h-[36px] rounded-full press-scale tap-target-expand ${
               periodTab === 'month' ? 'bg-white text-[#1C202B] shadow-sm' : 'text-[#8C857B]'
             }`}
@@ -539,42 +489,48 @@ export default function MemoryJournalPage() {
           className="bg-white rounded-3xl p-5 border border-[#EBE4D8] shadow-[0_8px_24px_rgba(45,38,30,0.04)]"
         >
           <div className="flex justify-between items-center mb-1">
-            <span className="text-[#8C857B] text-[12px] font-label font-semibold tracking-wider uppercase">
-              OCT 29 – NOV 4
+            <span className="text-[#8C857B] text-[12px] font-label font-semibold tracking-wider uppercase font-mono">
+              {upcomingDays[0]?.date} – {upcomingDays[upcomingDays.length - 1]?.date}
             </span>
             <div className="flex items-center text-[#58B37C] text-xs font-medium space-x-1 bg-[#E6F5EC] px-2.5 py-0.5 rounded-full">
               <span className="material-symbols-outlined text-[13px] text-[#236B42]">
                 auto_awesome
               </span>
               <span className="text-[#236B42] text-[12px] font-semibold">
-                {periodTab === 'week' ? '91% Flow' : '93% Month'}
+                {mistakes.length} Recasts
               </span>
             </div>
           </div>
           <h2 className="font-headline text-[18px] font-bold text-[#1C202B] tracking-tight leading-snug">
-            Mostly fluent, one tricky Wednesday
+            {mistakes.length === 0
+              ? 'Zero linguistic mistakes logged so far'
+              : `${mistakes.length} spoken repairs captured in Clinic`}
           </h2>
 
-          {/* 7 Expressive 3D Clay Droplet Character Days (M, T, W, T, F, S, S) */}
+          {/* 7 Expressive 3D Clay Droplet Character Days */}
           <div className="grid grid-cols-7 gap-1.5 mt-4 pt-1">
-            {JOURNAL_DAYS.map((d, i) => (
+            {upcomingDays.map((d, i) => (
               <button
-                key={i}
+                key={d.date + i}
                 type="button"
-                onClick={() => toast(d.summary)}
+                onClick={() => toast(`${d.date} · ${d.count} FSRS reviews scheduled`)}
                 className="flex flex-col items-center press-scale-sm min-h-[56px]"
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center relative shadow-sm border ${d.bg}`}
                 >
                   <span className="text-base select-none">{d.emoji}</span>
-                  {d.badge && (
-                    <span className="absolute -top-1 -right-0.5 w-3.5 h-3.5 bg-[#E5735D] text-white rounded-full text-[9px] flex items-center justify-center font-bold font-mono">
-                      {d.badge}
+                  {d.count > 0 && (
+                    <span className="absolute -top-1 -right-0.5 w-4 h-4 bg-[#1C202B] text-white rounded-full text-[9px] flex items-center justify-center font-bold font-mono">
+                      {d.count}
                     </span>
                   )}
                 </div>
-                <span className={`text-[12px] mt-1.5 ${d.labelClass ?? 'font-semibold text-[#8C857B]'}`}>
+                <span
+                  className={`text-[12px] mt-1.5 ${
+                    d.isToday ? 'font-bold text-[#1C202B]' : 'font-semibold text-[#8C857B]'
+                  }`}
+                >
                   {d.day}
                 </span>
               </button>
@@ -605,30 +561,30 @@ export default function MemoryJournalPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-[#F4B844]" />
               </div>
               <p className="text-xs text-[#7A7365] font-body truncate">
-                Wednesday evening · Post-Compaction
+                {plan?.plan_date ?? new Date().toISOString().slice(0, 10)} · Memory &amp; Clinic
               </p>
             </div>
             <button
               type="button"
-              aria-label="Bookmark note"
-              onClick={() => toast.success('Saved reflection to Memory Highlights')}
+              aria-label="Edit Memory"
+              onClick={() => navigate('13-memory-editor')}
               className="w-11 h-11 rounded-full flex items-center justify-center text-[#7A7365] press-scale-sm"
             >
-              <span className="material-symbols-outlined text-lg">bookmark_border</span>
+              <span className="material-symbols-outlined text-lg">edit_note</span>
             </button>
           </div>
 
-          <blockquote className="font-headline italic text-[#1C202B] text-[20px] leading-snug tracking-tight">
-            “Dear Alex, you sounded much bolder in tonight’s architecture roleplay than last week.”
+          <blockquote className="font-headline italic text-[#1C202B] text-[19px] leading-snug tracking-tight">
+            “
+            {plan?.scenario_title
+              ? `今日场景：${plan.scenario_title}`
+              : profileBullets[0] || '你的双层 Markdown 记忆画像已同步就绪。'}
+            ”
           </blockquote>
 
-          <p className="font-body text-[13.5px] text-[#5A554C] leading-relaxed mt-2.5">
-            You wove 15 new engineering verbs into our talk without tapping a single hint—and your
-            first-syllable stress on{' '}
-            <span className="font-medium text-[#1C202B] bg-white/60 px-1.5 py-0.5 rounded font-mono text-xs">
-              deprecate
-            </span>{' '}
-            clicked right away.
+          <p className="font-body text-[13px] text-[#5A554C] leading-relaxed mt-2.5">
+            {plan?.scenario_brief ||
+              '每次完成语音对话后，夜间 Compaction 会将你的工作背景更新至 user_profile.md，并将高频发音或语法薄弱点整理至 error_patterns.md。'}
           </p>
 
           <div className="grid grid-cols-2 gap-2.5 mt-4 pt-1">
@@ -637,8 +593,8 @@ export default function MemoryJournalPage() {
               onClick={() => navigate('07-voice-studio-lobby')}
               className="h-11 min-h-[44px] rounded-full bg-[#1C202B] text-white font-body font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-sm press-scale"
             >
-              <span className="material-symbols-outlined text-sm text-[#F4B844]">auto_awesome</span>
-              <span>Practice 3 Recasts</span>
+              <span className="material-symbols-outlined text-sm text-[#F4B844]">mic</span>
+              <span>Voice Studio</span>
             </button>
             <button
               type="button"
@@ -664,7 +620,7 @@ export default function MemoryJournalPage() {
                 </span>
               </div>
               <p className="text-xs text-[#8C857B] font-body mt-0.5">
-                Non-blocking in-flow repairs from Episode 14
+                Non-blocking in-flow repairs from live voice sessions
               </p>
             </div>
           </div>
@@ -694,9 +650,8 @@ export default function MemoryJournalPage() {
 
           {/* Mistake Cards List */}
           {uiStateMode === 'empty' || filteredMistakes.length === 0 ? (
-            <div className="bg-[#E6F5EC] rounded-2xl p-4 border border-[#C8E6C9] text-[#236B42] text-xs font-medium">
-              🎉 Zero mistakes logged in this category! Complete a live voice call with Pip to
-              receive personalized pronunciation &amp; grammar recasts.
+            <div className="bg-[#E6F5EC] rounded-2xl p-4 border border-[#C8E6C9] text-[#236B42] text-xs font-medium leading-relaxed">
+              当前分类下暂无纠错记录。在实时语音通话中，Pip 捕捉到的发音、语法与选词修正会自动收录于此。
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
@@ -721,8 +676,8 @@ export default function MemoryJournalPage() {
                       onClick={() => void handlePlayClinicAudio(item.id, item.corrected_version)}
                       className="tap-target-expand flex items-center space-x-1 text-xs font-body font-semibold text-[#1C202B] bg-[#F9F6F0] px-3 py-1.5 min-h-[36px] rounded-full border border-[#E8E2D7] press-scale"
                     >
-                      <span className="material-symbols-outlined text-sm">compare_arrows</span>
-                      <span>Compare Audio</span>
+                      <span className="material-symbols-outlined text-sm">volume_up</span>
+                      <span>Listen TTS</span>
                     </button>
                   </div>
 
@@ -744,14 +699,13 @@ export default function MemoryJournalPage() {
                         <p className="font-headline font-semibold text-[15.5px] text-[#236B42] leading-snug">
                           “{item.corrected_version}”
                         </p>
-                        <div className="flex items-center space-x-2 mt-1.5 flex-wrap gap-y-1">
-                          <span className="text-[12px] font-mono bg-[#E6F5EC] text-[#236B42] px-2 py-0.5 rounded font-medium border border-[#C8E6C9]">
-                            {item.explanation}
-                          </span>
-                          <span className="text-[12px] font-mono text-[#8C857B]">
-                            S: 3.8d · FSRS Good
-                          </span>
-                        </div>
+                        {item.explanation && (
+                          <div className="flex items-center space-x-2 mt-1.5 flex-wrap gap-y-1">
+                            <span className="text-[12px] font-mono bg-[#E6F5EC] text-[#236B42] px-2 py-0.5 rounded font-medium border border-[#C8E6C9]">
+                              {item.explanation}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -769,24 +723,16 @@ export default function MemoryJournalPage() {
                           {playingClipId === item.id ? 'graphic_eq' : 'play_arrow'}
                         </span>
                       </button>
-                      <div className="flex items-center space-x-0.5">
-                        <span className="w-1 h-3 bg-[#58B37C] rounded-full animate-pulse" />
-                        <span className="w-1 h-5 bg-[#58B37C] rounded-full" />
-                        <span className="w-1 h-2 bg-[#58B37C] rounded-full" />
-                        <span className="w-1 h-6 bg-[#58B37C] rounded-full" />
-                        <span className="w-1 h-4 bg-[#C8E6C9] rounded-full" />
-                        <span className="w-1 h-2.5 bg-[#C8E6C9] rounded-full" />
-                        <span className="w-1 h-5 bg-[#C8E6C9] rounded-full" />
-                        <span className="w-1 h-3 bg-[#C8E6C9] rounded-full" />
-                      </div>
-                      <span className="text-[12px] font-mono text-[#8C857B]">0.8s clip</span>
+                      <span className="text-[12px] font-mono text-[#8C857B]">
+                        {item.plan_date}
+                      </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => navigate('07-voice-studio-lobby')}
                       className="tap-target-expand text-[12px] font-body font-medium text-[#5A554C] press-scale"
                     >
-                      Repeat with Pip →
+                      Practice with Pip →
                     </button>
                   </div>
                 </motion.div>
@@ -795,7 +741,7 @@ export default function MemoryJournalPage() {
           )}
         </section>
 
-        {/* 5. Section 'Moments Pip will remember' */}
+        {/* 5. Section 'Moments Pip will remember' (Real facts from user_profile.md) */}
         <section className="space-y-2.5 pt-2">
           <div className="flex items-baseline justify-between">
             <div>
@@ -803,7 +749,7 @@ export default function MemoryJournalPage() {
                 Moments Pip will remember
               </h2>
               <p className="text-xs text-[#8C857B] font-body">
-                Extracted facts automatically compacted into persistent agent memory
+                Facts from /data/memory/user_profile.md
               </p>
             </div>
             <button
@@ -811,54 +757,47 @@ export default function MemoryJournalPage() {
               onClick={() => navigate('13-memory-editor')}
               className="tap-target-expand text-xs font-semibold text-[#1C202B] flex-shrink-0 ml-2 press-scale"
             >
-              See all →
+              Edit .md →
             </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('13-memory-editor')}
-              className="bg-white rounded-2xl p-3.5 border border-[#EBE4D8] shadow-sm flex flex-col justify-between text-left press-scale"
-            >
-              <div>
-                <div className="flex items-center space-x-1 text-[#F4B844] mb-2">
-                  <span className="material-symbols-outlined text-sm fill-icon">bolt</span>
-                  <span className="text-[12px] font-mono uppercase font-bold text-[#8C857B]">
-                    Work Context
-                  </span>
+            {(profileBullets.length >= 2
+              ? profileBullets.slice(0, 2)
+              : [
+                  profileBullets[0] || '在 user_profile.md 中记录你的职业与口语目标',
+                  '在 user_profile.md 中记录你的学习偏好与近期动态',
+                ]
+            ).map((fact, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => navigate('13-memory-editor')}
+                className="bg-white rounded-2xl p-3.5 border border-[#EBE4D8] shadow-sm flex flex-col justify-between text-left press-scale"
+              >
+                <div>
+                  <div
+                    className={`flex items-center space-x-1 mb-2 ${
+                      idx === 0 ? 'text-[#F4B844]' : 'text-[#6A9AE2]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm fill-icon">
+                      {idx === 0 ? 'bolt' : 'psychology'}
+                    </span>
+                    <span className="text-[11px] font-mono uppercase font-bold text-[#8C857B]">
+                      {idx === 0 ? 'Profile' : 'Preference'}
+                    </span>
+                  </div>
+                  <p className="font-headline italic text-[13px] text-[#1C202B] leading-snug line-clamp-3">
+                    “{fact}”
+                  </p>
                 </div>
-                <p className="font-headline italic text-[13.5px] text-[#1C202B] leading-snug">
-                  “Shipping the new payment webhook microservice next Friday.”
-                </p>
-              </div>
-              <div className="mt-3 pt-2 border-t border-[#F2ECE1] flex items-center justify-between text-[12px] text-[#8C857B] font-mono w-full">
-                <span>Today</span>
-                <span className="text-emerald-700">Committed</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('13-memory-editor')}
-              className="bg-white rounded-2xl p-3.5 border border-[#EBE4D8] shadow-sm flex flex-col justify-between text-left press-scale"
-            >
-              <div>
-                <div className="flex items-center space-x-1 text-[#6A9AE2] mb-2">
-                  <span className="material-symbols-outlined text-sm fill-icon">psychology</span>
-                  <span className="text-[12px] font-mono uppercase font-bold text-[#8C857B]">
-                    Tech Profile
-                  </span>
+                <div className="mt-3 pt-2 border-t border-[#F2ECE1] flex items-center justify-between text-[11px] text-[#8C857B] font-mono w-full">
+                  <span>user_profile.md</span>
+                  <span className="text-emerald-700">Synced</span>
                 </div>
-                <p className="font-headline italic text-[13.5px] text-[#1C202B] leading-snug">
-                  “Prefers deterministic Python harnesses over heavy frameworks.”
-                </p>
-              </div>
-              <div className="mt-3 pt-2 border-t border-[#F2ECE1] flex items-center justify-between text-[12px] text-[#8C857B] font-mono w-full">
-                <span>Nov 1</span>
-                <span className="text-emerald-700">Permanent</span>
-              </div>
-            </button>
+              </button>
+            ))}
           </div>
         </section>
       </div>

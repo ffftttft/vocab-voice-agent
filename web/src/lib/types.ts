@@ -51,6 +51,9 @@ export interface Progress {
 
 export interface QueueResponse {
   plan_date: string
+  scenario_title?: string | null
+  scenario_brief?: string | null
+  status?: string | null
   progress: Progress
   cards: StudyCard[]
 }
@@ -76,6 +79,9 @@ export interface UpcomingDay {
 export interface Stats {
   new: number
   due: number
+  learning?: number
+  review?: number
+  relearning?: number
   total: number
   upcoming: UpcomingDay[]
 }
@@ -120,6 +126,8 @@ export interface LinguisticMistakeRecord {
 export interface WordsAndMistakesResponse {
   words: WordRecord[]
   mistakes: LinguisticMistakeRecord[]
+  tag_counts?: Record<string, number>
+  books?: string[]
 }
 
 export interface TargetWord {

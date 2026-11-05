@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { useAppStore } from '../store/useAppStore'
-import { StatusBar } from '../components/ShellComponents'
 
 export default function FsrsSprintPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
@@ -11,6 +10,8 @@ export default function FsrsSprintPage() {
   const cards = useAppStore((s) => s.cards)
   const currentCardIndex = useAppStore((s) => s.currentCardIndex)
   const selectedOption = useAppStore((s) => s.selectedOption)
+  const lastReviewResult = useAppStore((s) => s.lastReviewResult)
+  const lastDurationMs = useAppStore((s) => s.lastDurationMs)
   const autoAudio = useAppStore((s) => s.autoAudio)
   const setAutoAudio = useAppStore((s) => s.setAutoAudio)
   const confusableExpanded = useAppStore((s) => s.confusableExpanded)
@@ -18,33 +19,42 @@ export default function FsrsSprintPage() {
   const submitCardChoice = useAppStore((s) => s.submitCardChoice)
   const overrideCardRating = useAppStore((s) => s.overrideCardRating)
   const nextSprintCard = useAppStore((s) => s.nextSprintCard)
+  const regenerateDailyPlan = useAppStore((s) => s.regenerateDailyPlan)
   const plan = useAppStore((s) => s.plan)
+  const stats = useAppStore((s) => s.stats)
 
   const card = cards[currentCardIndex] ?? cards[0]
-  const doneCount = plan?.progress.done ?? 43
-  const totalCount = plan?.progress.total ?? 120
+  const doneCount = plan?.progress.done ?? 0
+  const totalCount = plan?.progress.total ?? cards.length
+  const newDone = plan?.progress.new.done ?? 0
+  const revDone = plan?.progress.review.done ?? 0
+  const newPct = totalCount > 0 ? Math.round((newDone / totalCount) * 100) : 0
+  const revPct = totalCount > 0 ? Math.round((revDone / totalCount) * 100) : 0
+  const donePct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
   // Live response timer for 02-fsrs-sprint-question
-  const [timerSec, setTimerSec] = useState(1.8)
+  const [timerSec, setTimerSec] = useState(0.0)
   const [autoAdvancePaused, setAutoAdvancePaused] = useState(false)
   const [activeRating, setActiveRating] = useState<2 | 3 | 4>(4)
   const startTimeRef = useRef<number>(performance.now())
 
   useEffect(() => {
-    if (currentScreen !== '02-fsrs-sprint-question') return
-    setTimerSec(1.8)
+    if (currentScreen !== '02-fsrs-sprint-question' || !card) return
+    setTimerSec(0.0)
     startTimeRef.current = performance.now()
     const id = window.setInterval(() => {
-      setTimerSec((t) => (t < 29.9 ? Number((t + 0.1).toFixed(1)) : t))
+      setTimerSec((t) => (t < 59.9 ? Number((t + 0.1).toFixed(1)) : t))
     }, 100)
     return () => window.clearInterval(id)
-  }, [currentScreen, currentCardIndex])
+  }, [currentScreen, currentCardIndex, card])
 
   const highlightTargetWord = (sentence: string, word: string, underlineColorClass: string) => {
-    const regex = new RegExp(`(${word})`, 'ig')
+    if (!word) return sentence
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`(${escaped}\\w*)`, 'ig')
     const parts = sentence.split(regex)
     return parts.map((part, i) =>
-      part.toLowerCase() === word.toLowerCase() ? (
+      part.toLowerCase().startsWith(word.toLowerCase()) ? (
         <span key={i} className={underlineColorClass}>
           {part}
         </span>
@@ -54,15 +64,83 @@ export default function FsrsSprintPage() {
     )
   }
 
+  // Empty queue state (no wordbook or no daily plan yet)
+  if (!card) {
+    return (
+      <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#F9F6F0] text-[#1C202B] flex flex-col justify-between px-5 pt-3 pb-6 overflow-hidden select-none sprint-shell">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            aria-label="Exit sprint"
+            onClick={() => navigate('01-today-studio')}
+            className="w-11 h-11 rounded-full bg-white shadow-sm border border-[#EAE3D6] flex items-center justify-center text-[#1C202B] press-scale-sm"
+          >
+            <span className="material-symbols-outlined text-[19px]">close</span>
+          </button>
+          <span className="font-mono text-xs text-[#8C857B]">FSRS Sprint</span>
+          <div className="w-11" />
+        </div>
+
+        <div className="bg-[#EFE6D5] rounded-[28px] p-6 border border-[#E2D7C1] text-center space-y-3 shadow-sm">
+          <img
+            src="/assets/pip-avatar.png"
+            alt="Pip"
+            className="w-14 h-14 rounded-full object-cover mx-auto border-2 border-white shadow-sm"
+          />
+          <h1 className="font-headline text-[22px] font-semibold text-[#1C202B]">
+            {(stats?.total ?? 0) === 0 ? '尚未导入词书' : '今日背词队列为空'}
+          </h1>
+          <p className="text-xs text-[#5A554C] leading-relaxed">
+            {(stats?.total ?? 0) === 0
+              ? '请先在词库页导入 JSON 或 CSV 词书文件，再生成今日 FSRS 背词与口语练习队列。'
+              : '点击下方按钮生成今日场景学习计划，即可开始四选一极速刷词。'}
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            {(stats?.total ?? 0) === 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate('06-wordbooks-tagging')}
+                className="w-full py-3.5 rounded-full bg-[#1C202B] text-white text-xs font-semibold press-scale shadow-md"
+              >
+                前往导入词书 (.json / .csv) →
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void regenerateDailyPlan()}
+                className="w-full py-3.5 rounded-full bg-[#1C202B] text-white text-xs font-semibold press-scale shadow-md"
+              >
+                生成今日学习计划 →
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('01-today-studio')}
+              className="w-full py-3 rounded-full bg-white text-[#1C202B] text-xs font-semibold border border-[#DCD3C0] press-scale"
+            >
+              返回 Today Studio
+            </button>
+          </div>
+        </div>
+
+        <div />
+      </div>
+    )
+  }
+
+  const scenarioLabel = `SCENARIO: ${(plan?.scenario_title || 'DAILY CONTEXT').toUpperCase()}`
+  const defPos = card.pos_defs?.[0]?.pos ?? ''
+  const defText = card.pos_defs?.[0]?.def ?? ''
+  const elapsedDisplaySec =
+    lastDurationMs > 0 ? (lastDurationMs / 1000).toFixed(1) : timerSec.toFixed(1)
+
   // ============================================================================
   // SCREEN 02: FSRS SPRINT — QUESTION STATE
   // ============================================================================
   if (currentScreen === '02-fsrs-sprint-question') {
     return (
-      <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#F9F6F0] text-[#1C202B] flex flex-col justify-between px-4 pt-0 pb-3 overflow-hidden select-none sprint-shell">
+      <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#F9F6F0] text-[#1C202B] flex flex-col justify-between px-4 pt-1 pb-3 overflow-hidden select-none sprint-shell">
         <div className="shrink-0">
-          <StatusBar compact />
-
           {/* Top Header Bar: Close | Dual-segment Progress | Status Pills */}
           <nav className="w-full mt-1 mb-2 flex items-center justify-between gap-2 sprint-header">
             <button
@@ -85,17 +163,17 @@ export default function FsrsSprintPage() {
                 <div className="flex items-center gap-1.5 text-[10px] font-mono font-medium">
                   <span className="text-[#6B5AED] flex items-center gap-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#9B8AFB]" />
-                    14N
+                    {newDone}N
                   </span>
                   <span className="text-[#2B579A] flex items-center gap-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#6A9AE2]" />
-                    29R
+                    {revDone}R
                   </span>
                 </div>
               </div>
               <div className="w-full h-[6px] bg-[#EAE3D5] rounded-full flex gap-1 p-[1px] overflow-hidden">
-                <div className="h-full bg-[#9B8AFB] rounded-full" style={{ width: '32%' }} />
-                <div className="h-full bg-[#6A9AE2] rounded-full" style={{ width: '24%' }} />
+                <div className="h-full bg-[#9B8AFB] rounded-full" style={{ width: `${newPct}%` }} />
+                <div className="h-full bg-[#6A9AE2] rounded-full" style={{ width: `${revPct}%` }} />
               </div>
             </div>
 
@@ -132,7 +210,7 @@ export default function FsrsSprintPage() {
 
         {/* Middle Content: Word Hero + Contextual Scenario Sentence */}
         <div className="flex-1 flex flex-col justify-center min-h-0 space-y-2.5">
-          {/* 3. Word Hero Card (Draggable for tactile card feel) */}
+          {/* 3. Word Hero Card */}
           <motion.section
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
@@ -147,14 +225,16 @@ export default function FsrsSprintPage() {
                 <span className="bg-[#F0EDFF] text-[#6B5AED] text-[10.5px] font-body font-semibold px-2.5 py-0.5 rounded-full tracking-wide">
                   {card.item_type === 'NEW' ? 'NEW WORD' : 'REVIEW'}
                 </span>
-                <span className="text-[11px] font-mono text-[#8C857B]">
-                  {card.topic_tag ?? '#tech_architecture'}
-                </span>
+                {card.topic_tag && (
+                  <span className="text-[11px] font-mono text-[#8C857B]">{card.topic_tag}</span>
+                )}
               </div>
-              <div className="bg-[#FFF4D6] text-[#A66E14] text-[10.5px] font-body font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                <span className="material-symbols-outlined text-[13px] fill-icon">mic</span>
-                <span>Tonight&apos;s Voice Target #1</span>
-              </div>
+              {card.is_voice_target && (
+                <div className="bg-[#FFF4D6] text-[#A66E14] text-[10.5px] font-body font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                  <span className="material-symbols-outlined text-[13px] fill-icon">mic</span>
+                  <span>Voice Target</span>
+                </div>
+              )}
             </div>
 
             <div className="text-center my-2 sprint-headword-wrap">
@@ -164,9 +244,11 @@ export default function FsrsSprintPage() {
             </div>
 
             <div className="flex items-center justify-center gap-3">
-              <span className="font-mono font-medium text-[14px] text-[#5A554C]">
-                US {card.phonetic_us ?? '/ˈdeprəkeɪt/'}
-              </span>
+              {card.phonetic_us && (
+                <span className="font-mono font-medium text-[14px] text-[#5A554C]">
+                  US {card.phonetic_us}
+                </span>
+              )}
               <button
                 type="button"
                 aria-label="Replay pronunciation"
@@ -180,7 +262,7 @@ export default function FsrsSprintPage() {
                   <span className="w-[2px] bg-[#F4B844] rounded-full wave-bar-gpu wave-bar-gpu-4" />
                 </div>
                 <span className="text-[11px] font-body font-semibold text-[#8A5A0A]">
-                  Playing word audio...
+                  Play Word Audio
                 </span>
               </button>
             </div>
@@ -194,35 +276,44 @@ export default function FsrsSprintPage() {
             className="bg-[#EFE6D5] rounded-[24px] p-3.5 border border-[#E3D9C6] flex flex-col relative shadow-xs sprint-sentence-card"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <img
                   alt="Pip companion avatar"
-                  className="w-6 h-6 rounded-full object-cover ring-1 ring-white/70 shadow-2xs"
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-white/70 shadow-2xs shrink-0"
                   src="/assets/pip-avatar.png"
                 />
-                <span className="text-[10.5px] font-body font-bold text-[#6D6559] tracking-wider uppercase">
-                  SCENARIO: LEGACY API MIGRATION
+                <span className="text-[10.5px] font-body font-bold text-[#6D6559] tracking-wider uppercase truncate">
+                  {scenarioLabel}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => void api.playSpeech(card.sentence_en ?? card.word)}
-                className="tap-target-expand flex items-center gap-1 bg-white/80 text-[#7D7569] font-mono text-[10px] px-2.5 py-1 rounded-full press-scale border border-white/60"
-              >
-                <span className="material-symbols-outlined text-[12px]">headphones</span>
-                <span>+600ms Sentence Audio</span>
-              </button>
+              {card.sentence_en && (
+                <button
+                  type="button"
+                  onClick={() => void api.playSpeech(card.sentence_en ?? card.word)}
+                  className="tap-target-expand flex items-center gap-1 bg-white/80 text-[#7D7569] font-mono text-[10px] px-2.5 py-1 rounded-full press-scale border border-white/60 shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[12px]">headphones</span>
+                  <span>Sentence Audio</span>
+                </button>
+              )}
             </div>
 
             <p className="font-headline text-[16.5px] leading-[1.38] text-[#1C202B] my-0.5 font-normal sprint-sentence-en">
-              &ldquo;
-              {highlightTargetWord(
-                card.sentence_en ??
-                  "We plan to deprecate the legacy webhook endpoint before Friday's release so clients migrate cleanly.",
-                card.word,
-                'bg-[#FFF0C8] underline decoration-[#F4B844] decoration-2 underline-offset-4 font-medium px-1 rounded inline-block text-[#1C202B]',
+              {card.sentence_en ? (
+                <>
+                  &ldquo;
+                  {highlightTargetWord(
+                    card.sentence_en,
+                    card.word,
+                    'bg-[#FFF0C8] underline decoration-[#F4B844] decoration-2 underline-offset-4 font-medium px-1 rounded inline-block text-[#1C202B]',
+                  )}
+                  &rdquo;
+                </>
+              ) : (
+                <span className="italic text-[#5A554C]">
+                  请从下方四个同词性中文释义中选择 “{card.word}” 的正确含义。
+                </span>
               )}
-              &rdquo;
             </p>
 
             <div className="mt-2 bg-white/65 backdrop-blur-sm rounded-xl py-1 px-2.5 flex items-center justify-center gap-1.5 text-[10.5px] font-body text-[#7A7265] border border-white/50">
@@ -238,7 +329,8 @@ export default function FsrsSprintPage() {
         <section className="flex flex-col justify-end shrink-0 pt-1">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#8C857B]">
-              CHOOSE THE CORRECT MEANING (ALL SAME POS: {card.options[0]?.pos ?? 'v.'})
+              CHOOSE THE CORRECT MEANING{' '}
+              {card.options[0]?.pos ? `(POS: ${card.options[0].pos})` : ''}
             </span>
             <span className="font-mono text-[10px] text-[#A8A195]">SINGLE CHOICE</span>
           </div>
@@ -288,18 +380,19 @@ export default function FsrsSprintPage() {
   // SCREEN 03: FSRS SPRINT — CORRECT REVEAL STATE
   // ============================================================================
   if (currentScreen === '03-fsrs-sprint-reveal') {
-    const defText =
-      card.pos_defs?.[0]?.def ?? '弃用，淘汰（软件功能或旧接口）；对…表示不赞成'
-    const defPos = card.pos_defs?.[0]?.pos ?? 'v.'
+    const autoGradeLabel =
+      lastReviewResult?.rating === 4
+        ? 'Easy (4)'
+        : lastReviewResult?.rating === 3
+          ? 'Good (3)'
+          : 'Hard (2)'
 
     return (
       <div
         onPointerDown={() => setAutoAdvancePaused(true)}
         className="h-[100dvh] max-h-[100dvh] w-full bg-[#F9F6F0] text-[#1C202B] flex flex-col justify-between overflow-hidden select-none sprint-shell"
       >
-        <div className="px-4 pt-0 shrink-0">
-          <StatusBar compact />
-
+        <div className="px-4 pt-1 shrink-0">
           {/* 1. Top Header Row */}
           <header className="flex items-center justify-between gap-2.5 pt-1 mb-1.5 sprint-header">
             <button
@@ -319,13 +412,16 @@ export default function FsrsSprintPage() {
                 <span className="font-mono text-[10px] text-stone-400 font-medium">Card Sprint</span>
               </div>
               <div className="w-full h-2 bg-[#E9E3D5] rounded-full overflow-hidden p-[1px] flex">
-                <div className="h-full bg-[#58B37C] rounded-full" style={{ width: '36%' }} />
+                <div
+                  className="h-full bg-[#58B37C] rounded-full"
+                  style={{ width: `${donePct}%` }}
+                />
               </div>
             </div>
 
             <div className="bg-[#E6F5EC] border border-[#BFE6CE] text-[#236B42] font-mono font-bold text-[11px] px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-sm shrink-0">
               <span className="material-symbols-outlined text-[14px] text-[#236B42]">bolt</span>
-              <span>2.4s · Fast Recall!</span>
+              <span>{elapsedDisplaySec}s · Correct</span>
             </div>
           </header>
         </div>
@@ -354,14 +450,18 @@ export default function FsrsSprintPage() {
                     <span className="material-symbols-outlined text-[15px]">volume_up</span>
                   </button>
                 </div>
-                <p className="font-mono text-[11.5px] text-stone-500 tracking-tight">
-                  US {card.phonetic_us ?? '/ˈdeprəkeɪt/'}
-                </p>
+                {card.phonetic_us && (
+                  <p className="font-mono text-[11.5px] text-stone-500 tracking-tight">
+                    US {card.phonetic_us}
+                  </p>
+                )}
               </div>
-              <div className="bg-[#FFF6E5] text-[#9A6B1A] border border-[#F4D086] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
-                <span className="material-symbols-outlined text-[13px] fill-icon">star</span>
-                <span>Voice Target #1</span>
-              </div>
+              {card.is_voice_target && (
+                <div className="bg-[#FFF6E5] text-[#9A6B1A] border border-[#F4D086] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
+                  <span className="material-symbols-outlined text-[13px] fill-icon">star</span>
+                  <span>Voice Target</span>
+                </div>
+              )}
             </div>
 
             {/* Expanded Dictionary Meaning */}
@@ -376,23 +476,19 @@ export default function FsrsSprintPage() {
               </div>
             </div>
 
-            {/* Collocation Chips Row (Hidden on ultra-compact height to keep 100dvh 0-scroll) */}
-            <div className="flex flex-wrap gap-1.5 mt-2 sprint-hide-compact">
-              {(
-                card.collocations ?? [
-                  'deprecate an API',
-                  'deprecation warning',
-                  'formally deprecate',
-                ]
-              ).map((col) => (
-                <span
-                  key={col}
-                  className="bg-[#F4EFE6] text-[#4A453D] text-[10.5px] font-medium px-2 py-0.5 rounded-lg border border-[#E5DDD0]"
-                >
-                  {col}
-                </span>
-              ))}
-            </div>
+            {/* Collocation Chips Row (if present) */}
+            {card.collocations && card.collocations.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2 sprint-hide-compact">
+                {card.collocations.map((col) => (
+                  <span
+                    key={col}
+                    className="bg-[#F4EFE6] text-[#4A453D] text-[10.5px] font-medium px-2 py-0.5 rounded-lg border border-[#E5DDD0]"
+                  >
+                    {col}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* FSRS Memory Telemetry Bar */}
             <div className="bg-[#EBF2FC] text-[#2B579A] border border-[#BED7F7] font-mono text-[10px] px-2.5 py-1 rounded-xl mt-1.5 flex items-center justify-between flex-wrap gap-y-0.5 tabular-nums sprint-hide-compact">
@@ -400,16 +496,17 @@ export default function FsrsSprintPage() {
                 <span className="material-symbols-outlined text-[13px] text-[#2B579A]">
                   monitoring
                 </span>
-                <span className="font-bold">FSRS: Learning → Review</span>
+                <span className="font-bold">FSRS Rating: {autoGradeLabel}</span>
               </div>
               <div className="tracking-tighter">
                 <span>
-                  S: 1.8d → <strong className="font-semibold text-emerald-800">11.4d</strong>
+                  Next Due:{' '}
+                  <strong className="font-semibold text-emerald-800">
+                    {lastReviewResult?.next_due
+                      ? lastReviewResult.next_due.slice(0, 10)
+                      : 'Scheduled'}
+                  </strong>
                 </span>
-                <span className="mx-1 text-[#9BBBE8]">·</span>
-                <span>D: 4.6</span>
-                <span className="mx-1 text-[#9BBBE8]">·</span>
-                <span>R: 90%</span>
               </div>
             </div>
           </motion.section>
@@ -422,48 +519,52 @@ export default function FsrsSprintPage() {
             className="bg-[#EFE6D5] rounded-2xl p-3 border border-[#E2D8C3] shadow-2xs relative sprint-sentence-card"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <img
                   alt="Companion Pip"
-                  className="w-5 h-5 rounded-full object-cover ring-1 ring-white/80 shadow-2xs"
+                  className="w-5 h-5 rounded-full object-cover ring-1 ring-white/80 shadow-2xs shrink-0"
                   src="/assets/pip-avatar.png"
                 />
-                <span className="font-mono text-[9.5px] tracking-wider text-stone-600 font-bold uppercase">
-                  SCENARIO: LEGACY API MIGRATION
+                <span className="font-mono text-[9.5px] tracking-wider text-stone-600 font-bold uppercase truncate">
+                  {scenarioLabel}
                 </span>
               </div>
               <button
                 type="button"
                 aria-label="Replay Sentence Audio"
                 onClick={() => void api.playSpeech(card.sentence_en ?? card.word)}
-                className="tap-target-expand w-7 h-7 rounded-full bg-white/75 text-stone-600 flex items-center justify-center press-scale-sm shadow-2xs"
+                className="tap-target-expand w-7 h-7 rounded-full bg-white/75 text-stone-600 flex items-center justify-center press-scale-sm shadow-2xs shrink-0"
               >
                 <span className="material-symbols-outlined text-[14px]">replay</span>
               </button>
             </div>
-            <p className="font-serif text-[14.5px] leading-snug text-[#1C202B] mt-1.5 sprint-sentence-en">
-              &ldquo;
-              {highlightTargetWord(
-                card.sentence_en ??
-                  "We plan to deprecate the legacy webhook endpoint before Friday's release so clients migrate cleanly.",
-                card.word,
-                'underline decoration-amber-400 decoration-2 font-semibold',
-              )}
-              &rdquo;
-            </p>
-            <div className="border-t border-dashed border-[#DACFBA] my-1.5" />
-            <p className="font-sans text-[12.5px] leading-snug text-[#4A453C] font-normal sprint-sentence-zh">
-              “
-              {card.sentence_zh ??
-                '我们计划在周五发布前弃用旧版 Webhook 端点，以便客户端平滑迁移。'}
-              ”
-            </p>
+            {card.sentence_en && (
+              <p className="font-serif text-[14.5px] leading-snug text-[#1C202B] mt-1.5 sprint-sentence-en">
+                &ldquo;
+                {highlightTargetWord(
+                  card.sentence_en,
+                  card.word,
+                  'underline decoration-amber-400 decoration-2 font-semibold',
+                )}
+                &rdquo;
+              </p>
+            )}
+            {card.sentence_zh && (
+              <>
+                <div className="border-t border-dashed border-[#DACFBA] my-1.5" />
+                <p className="font-sans text-[12.5px] leading-snug text-[#4A453C] font-normal sprint-sentence-zh">
+                  “{card.sentence_zh}”
+                </p>
+              </>
+            )}
           </motion.section>
 
           {/* 4. Compact 4 Options List */}
           <section className="space-y-1">
             {card.options.map((opt) => {
-              const isCorrect = opt.label === 'B'
+              const isCorrect =
+                lastReviewResult?.correct_labels?.includes(opt.label) ??
+                opt.label === selectedOption
               if (isCorrect) {
                 return (
                   <div
@@ -510,14 +611,14 @@ export default function FsrsSprintPage() {
               <span className="material-symbols-outlined text-[13px] text-[#236B42]">
                 progress_activity
               </span>
-              <span>Answered in 2.4s (&lt;3.5s)</span>
+              <span>Answered in {elapsedDisplaySec}s</span>
             </div>
             <span className="font-bold text-[#1E5E3A] truncate">
-              {autoAdvancePaused ? 'Timer paused · Choose grade' : 'Auto-rating Easy (4) in 1.2s...'}
+              {autoAdvancePaused ? 'Choose manual grade override' : `Auto-rated ${autoGradeLabel}`}
             </span>
           </div>
 
-          {/* Three Side-by-Side Manual Override Buttons (all >= 44px height) */}
+          {/* Three Side-by-Side Manual Override Buttons */}
           <div className="flex items-center gap-2 my-2">
             <button
               type="button"
@@ -531,7 +632,7 @@ export default function FsrsSprintPage() {
                   : 'bg-[#F4F0E8] text-[#5C5549] border-[#E3DCCE]'
               }`}
             >
-              Hard · 模糊 <span className="font-mono text-[10px] text-stone-500">(2d)</span>
+              Hard · 模糊
             </button>
             <button
               type="button"
@@ -545,7 +646,7 @@ export default function FsrsSprintPage() {
                   : 'bg-[#F4F0E8] text-[#5C5549] border-[#E3DCCE]'
               }`}
             >
-              Good · 良好 <span className="font-mono text-[10px] text-stone-500">(5d)</span>
+              Good · 良好
             </button>
             <button
               type="button"
@@ -559,7 +660,7 @@ export default function FsrsSprintPage() {
                   : 'bg-[#F4F0E8] text-[#5C5549] border border-[#E3DCCE] font-semibold'
               }`}
             >
-              Easy · 秒杀 <span className="font-mono text-[10px] text-emerald-700">(11d)</span>
+              Easy · 秒杀
             </button>
           </div>
 
@@ -581,7 +682,10 @@ export default function FsrsSprintPage() {
   // ============================================================================
   // SCREEN 04: FSRS SPRINT — WRONG ANSWER & REQUEUE STATE
   // ============================================================================
-  const wrongLabel = selectedOption && selectedOption !== 'B' ? selectedOption : 'C'
+  const wrongLabel = selectedOption
+  const noteText =
+    card.confusable_note ||
+    `请结合例句语境记忆 "${card.word}" (${card.phonetic_us || ''}) 的准确释义：${defPos} ${defText}`
 
   return (
     <motion.div
@@ -591,9 +695,7 @@ export default function FsrsSprintPage() {
       className="h-[100dvh] max-h-[100dvh] w-full bg-[#F9F6F0] text-[#1C202B] flex flex-col justify-between overflow-hidden select-none relative sprint-shell"
     >
       {/* Top Header & Requeue Banner */}
-      <div className="px-4 pt-0 shrink-0">
-        <StatusBar compact />
-
+      <div className="px-4 pt-1 shrink-0">
         <div className="space-y-1.5 mt-1 mb-1.5 sprint-header">
           <div className="flex items-center justify-between gap-2.5">
             <button
@@ -613,8 +715,11 @@ export default function FsrsSprintPage() {
                 </span>
               </div>
               <div className="w-full h-1.5 bg-stone-200/70 rounded-full overflow-hidden flex">
-                <div className="h-full bg-emerald-500 rounded-l-full" style={{ width: '32%' }} />
-                <div className="h-full bg-[#E5735D]" style={{ width: '4%' }} />
+                <div
+                  className="h-full bg-emerald-500 rounded-l-full"
+                  style={{ width: `${donePct}%` }}
+                />
+                <div className="h-full bg-[#E5735D]" style={{ width: '5%' }} />
               </div>
             </div>
 
@@ -622,7 +727,9 @@ export default function FsrsSprintPage() {
               <span className="material-symbols-outlined text-[13px] text-[#A83825]">
                 sync_problem
               </span>
-              <span>Requeue #1</span>
+              <span>
+                Requeue #{lastReviewResult?.requeue_count ?? card.requeue_count + 1}
+              </span>
             </div>
           </div>
 
@@ -633,8 +740,7 @@ export default function FsrsSprintPage() {
             </span>
             <p className="text-[11px] leading-[15px] font-medium tracking-tight">
               <span className="font-bold">Locked as Again (Rating 1)</span> • Pushed to end of
-              today&apos;s queue (<span className="font-mono font-semibold">#120</span>) until
-              answered correctly.
+              today&apos;s queue until answered correctly.
             </p>
           </div>
         </div>
@@ -650,12 +756,16 @@ export default function FsrsSprintPage() {
                 <h1 className="font-headline italic text-[30px] leading-tight font-medium text-[#1C202B] tracking-tight sprint-headword">
                   {card.word}
                 </h1>
-                <span className="font-mono text-stone-500 text-[12px] tracking-tight">
-                  {card.phonetic_us ?? '/ˈdeprəkeɪt/'}
-                </span>
-                <span className="text-[10px] font-semibold bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded uppercase font-label">
-                  verb
-                </span>
+                {card.phonetic_us && (
+                  <span className="font-mono text-stone-500 text-[12px] tracking-tight">
+                    {card.phonetic_us}
+                  </span>
+                )}
+                {defPos && (
+                  <span className="text-[10px] font-semibold bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded uppercase font-label">
+                    {defPos}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -670,7 +780,7 @@ export default function FsrsSprintPage() {
                 <span className="w-[2px] bg-[#E5735D] rounded-full wave-bar-gpu wave-bar-gpu-3" />
                 <span className="w-[2px] bg-[#E5735D] rounded-full wave-bar-gpu wave-bar-gpu-4" />
               </div>
-              <span className="text-[10px] font-medium text-stone-600">Replaying...</span>
+              <span className="text-[10px] font-medium text-stone-600">Replay</span>
             </button>
           </div>
 
@@ -679,22 +789,20 @@ export default function FsrsSprintPage() {
               <span className="font-semibold text-stone-500 font-mono text-[10.5px] mr-1">
                 DEF:
               </span>
-              v. 弃用，淘汰（软件接口或旧功能）；对…表示不赞成
+              {defPos} {defText}
             </p>
-            {/* Compact Expandable Trigger for Small Screens (375x667) */}
             <button
               type="button"
               onClick={() => setConfusableExpanded(!confusableExpanded)}
               className="tap-target-expand shrink-0 bg-[#FFF8E6] border border-amber-300 text-amber-950 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5 press-scale"
             >
-              <span>辨析 Note</span>
+              <span>记忆提示</span>
               <span className="material-symbols-outlined text-[12px]">
                 {confusableExpanded ? 'expand_less' : 'expand_more'}
               </span>
             </button>
           </div>
 
-          {/* Pip's Confusable Note (Full box on tall screens, popover when tapped on compact screens) */}
           <div className="bg-[#FFF8E6] border border-amber-200/90 rounded-[14px] p-2 my-1.5 sprint-hide-compact">
             <div className="flex items-center gap-1.5 mb-0.5">
               <img
@@ -703,22 +811,14 @@ export default function FsrsSprintPage() {
                 src="/assets/pip-avatar.png"
               />
               <span className="font-bold text-[11px] text-amber-950 font-body">
-                Pip&apos;s Confusable Note (形近词辨析)
+                Pip&apos;s Memory Note
               </span>
             </div>
-            <p className="text-[11px] leading-snug text-amber-950/90">
-              Do not confuse <strong className="font-semibold text-[#1C202B]">&ldquo;deprecate&rdquo;</strong>{' '}
-              (<span className="font-mono text-[10px]">/ˈdeprəkeɪt/</span>, v. 弃用) with{' '}
-              <strong className="font-semibold text-[#1C202B]">&ldquo;depreciate&rdquo;</strong> (v.
-              折旧/贬值) or <strong className="font-semibold text-[#1C202B]">&ldquo;degrade&rdquo;</strong>{' '}
-              (v. 降级).
-            </p>
+            <p className="text-[11px] leading-snug text-amber-950/90">{noteText}</p>
           </div>
 
           <div className="font-mono text-[10px] text-[#A83825] bg-[#FCECE8]/70 border border-[#E5735D]/30 rounded-xl px-2.5 py-1 mt-1 flex items-center justify-between tracking-tight tabular-nums">
-            <span className="font-medium">Lapses: 1 → 2</span>
-            <span className="text-stone-300">|</span>
-            <span className="font-medium">Stability Reset S: 0.4d</span>
+            <span className="font-medium">Rating: Again (1)</span>
             <span className="text-stone-300">|</span>
             <span className="font-semibold uppercase tracking-wider text-[9.5px]">
               State: Relearning
@@ -729,46 +829,52 @@ export default function FsrsSprintPage() {
         {/* Section 3: Contextual Scenario Sentence Card - Fully Revealed */}
         <section className="bg-[#EFE6D5] rounded-[20px] p-3 border border-[#E2D8C3] shadow-2xs sprint-sentence-card">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <img
                 alt="Pip"
                 className="w-[18px] h-[18px] rounded-full object-cover shrink-0"
                 src="/assets/pip-avatar.png"
               />
-              <span className="font-label font-bold text-[9.5px] tracking-wider text-stone-700 uppercase">
-                Scenario: Legacy API Migration
+              <span className="font-label font-bold text-[9.5px] tracking-wider text-stone-700 uppercase truncate">
+                {scenarioLabel}
               </span>
             </div>
             <button
               type="button"
               onClick={() => void api.playSpeech(card.sentence_en ?? card.word)}
-              className="tap-target-expand flex items-center gap-1 text-[10.5px] font-semibold text-stone-700 bg-white/70 px-2 py-0.5 rounded-full press-scale"
+              className="tap-target-expand flex items-center gap-1 text-[10.5px] font-semibold text-stone-700 bg-white/70 px-2 py-0.5 rounded-full press-scale shrink-0"
             >
               <span className="material-symbols-outlined text-[13px]">volume_up</span>
               <span>Listen</span>
             </button>
           </div>
 
-          <blockquote className="font-headline italic text-[14px] leading-snug text-[#1C202B] mb-1 font-normal sprint-sentence-en">
-            “We plan to{' '}
-            <span className="underline decoration-[#E5735D] decoration-2 underline-offset-2 font-medium not-italic text-[#1C202B]">
-              deprecate
-            </span>{' '}
-            the legacy webhook endpoint before Friday&apos;s release so clients migrate cleanly.”
-          </blockquote>
+          {card.sentence_en && (
+            <blockquote className="font-headline italic text-[14px] leading-snug text-[#1C202B] mb-1 font-normal sprint-sentence-en">
+              “
+              {highlightTargetWord(
+                card.sentence_en,
+                card.word,
+                'underline decoration-[#E5735D] decoration-2 underline-offset-2 font-medium not-italic text-[#1C202B]',
+              )}
+              ”
+            </blockquote>
+          )}
 
-          <div className="pt-1 border-t border-stone-300/60 sprint-sentence-zh">
-            <p className="text-[11.5px] leading-snug text-stone-700 font-medium">
-              “我们计划在周五发布前弃用旧版 Webhook 端点，以便客户端平滑迁移。”
-            </p>
-          </div>
+          {card.sentence_zh && (
+            <div className="pt-1 border-t border-stone-300/60 sprint-sentence-zh">
+              <p className="text-[11.5px] leading-snug text-stone-700 font-medium">
+                “{card.sentence_zh}”
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Section 4: Compact 4 Options Comparison */}
         <section className="space-y-1">
           {card.options.map((opt) => {
-            const isCorrect = opt.label === 'B'
-            const isWrongChoice = opt.label === wrongLabel
+            const isCorrect = lastReviewResult?.correct_labels?.includes(opt.label) ?? false
+            const isWrongChoice = opt.label === wrongLabel && !isCorrect
             if (isCorrect) {
               return (
                 <div
@@ -830,7 +936,7 @@ export default function FsrsSprintPage() {
         </section>
       </div>
 
-      {/* Expandable Confusable Note Popover for Compact Screens (e.g. 375x667 iPhone SE) */}
+      {/* Expandable Confusable Note Popover for Compact Screens */}
       <AnimatePresence>
         {confusableExpanded && (
           <motion.div
@@ -848,17 +954,11 @@ export default function FsrsSprintPage() {
                   className="w-6 h-6 rounded-full object-cover"
                   src="/assets/pip-avatar.png"
                 />
-                <span className="font-bold text-xs text-amber-950">
-                  Pip&apos;s Confusable Note (形近词辨析)
-                </span>
+                <span className="font-bold text-xs text-amber-950">Pip&apos;s Memory Note</span>
               </div>
               <span className="material-symbols-outlined text-[16px] text-amber-900">close</span>
             </div>
-            <p className="text-xs leading-relaxed text-amber-950">
-              Do not confuse <strong>&ldquo;deprecate&rdquo;</strong> (/ˈdeprəkeɪt/, v. 弃用) with{' '}
-              <strong>&ldquo;depreciate&rdquo;</strong> (/dɪˈpriːʃieɪt/, v. 折旧/贬值) or{' '}
-              <strong>&ldquo;degrade&rdquo;</strong> (v. 降级).
-            </p>
+            <p className="text-xs leading-relaxed text-amber-950">{noteText}</p>
           </motion.div>
         )}
       </AnimatePresence>

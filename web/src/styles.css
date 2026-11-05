@@ -340,9 +340,6 @@ select {
     padding-top: 4px !important;
     padding-bottom: 6px !important;
   }
-  .sprint-status-bar {
-    display: none !important;
-  }
   .sprint-header {
     margin-top: 2px !important;
     margin-bottom: 6px !important;

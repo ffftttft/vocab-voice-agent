@@ -23,125 +23,35 @@ export interface StageConfigState {
   temperature?: number | null
 }
 
-const FALLBACK_CARDS: StudyCard[] = [
-  {
-    item_id: 1,
-    word_id: 1,
-    word: 'deprecate',
-    phonetic_us: '/ˈdeprəkeɪt/',
-    item_type: 'NEW',
-    sentence_en:
-      "We plan to deprecate the legacy webhook endpoint before Friday's release so clients migrate cleanly.",
-    sentence_zh: '我们计划在周五发布前弃用旧版 Webhook 端点，以便客户端平滑迁移。',
-    sentence_audio_path: null,
-    pos_defs: [{ pos: 'v.', def: '弃用，淘汰（软件功能或旧接口）；对…表示不赞成' }],
-    options: [
-      { label: 'A', pos: 'v.', text: '部署；调配（微服务节点与资源）' },
-      { label: 'B', pos: 'v.', text: '弃用；不赞成使用（旧接口或功能）' },
-      { label: 'C', pos: 'v.', text: '降级；削减（系统非核心权限）' },
-      { label: 'D', pos: 'v.', text: '委派；授权（底层调用任务）' },
-    ],
-    is_voice_target: true,
-    requeue_count: 0,
-    collocations: ['deprecate an API', 'deprecation warning', 'formally deprecate'],
-    confusable_note:
-      'Do not confuse "deprecate" (/ˈdeprəkeɪt/, v. 弃用) with "depreciate" (/dɪˈpriːʃieɪt/, v. 折旧/贬值) or "degrade" (v. 降级).',
-    topic_tag: '#tech_architecture',
-  },
-  {
-    item_id: 2,
-    word_id: 2,
-    word: 'idempotent',
-    phonetic_us: '/ˌaɪdemˈpoʊtənt/',
-    item_type: 'NEW',
-    sentence_en:
-      'Ensure the payment retry webhook handler is strictly idempotent so duplicate requests never double-charge.',
-    sentence_zh: '务必确保支付重试 Webhook 处理器是严格幂等的，防止重复请求造成二次扣款。',
-    sentence_audio_path: null,
-    pos_defs: [{ pos: 'adj.', def: '幂等的（多次执行结果一致，不产生额外副作用）' }],
-    options: [
-      { label: 'A', pos: 'adj.', text: '幂等的（多次请求产生相同副作用）' },
-      { label: 'B', pos: 'adj.', text: '异步的（非阻塞并发执行）' },
-      { label: 'C', pos: 'adj.', text: '短暂的；临时的（生命周期极短）' },
-      { label: 'D', pos: 'adj.', text: '冗余的（用于故障切换备份）' },
-    ],
-    is_voice_target: true,
-    requeue_count: 0,
-    collocations: ['idempotent retry', 'idempotency key', 'strictly idempotent'],
-    confusable_note:
-      'In distributed systems, "idempotent" means f(f(x)) = f(x) — safe to retry without duplicate side effects.',
-    topic_tag: '#distributed_systems',
-  },
-  {
-    item_id: 3,
-    word_id: 3,
-    word: 'bottleneck',
-    phonetic_us: '/ˈbɑːtlnek/',
-    item_type: 'REVIEW',
-    sentence_en:
-      'Connection pool contention became our primary database bottleneck during the flash sale spike.',
-    sentence_zh: '在秒杀流量高峰期间，连接池争用成为了我们主要的数据库性能瓶颈。',
-    sentence_audio_path: null,
-    pos_defs: [{ pos: 'n.', def: '瓶颈；阻碍系统吞吐的关键环节' }],
-    options: [
-      { label: 'A', pos: 'n.', text: '吞吐量；单位时间处理定额' },
-      { label: 'B', pos: 'n.', text: '瓶颈；限制整体性能的阻塞点' },
-      { label: 'C', pos: 'n.', text: '快照；特定时间点的状态副本' },
-      { label: 'D', pos: 'n.', text: '载荷；传输协议中的核心数据' },
-    ],
-    is_voice_target: true,
-    requeue_count: 0,
-    collocations: ['I/O bottleneck', 'pinpoint the bottleneck', 'remove a bottleneck'],
-    confusable_note:
-      'Use "bottleneck" for the narrowest stage limiting throughput, vs "deadlock" where threads block each other permanently.',
-    topic_tag: '#performance',
-  },
-  {
-    item_id: 4,
-    word_id: 4,
-    word: 'ratify',
-    phonetic_us: '/ˈrætɪfaɪ/',
-    item_type: 'NEW',
-    sentence_en:
-      'All three staff engineers must ratify the schema migration RFC before we freeze the release branch.',
-    sentence_zh: '在冻结发布分支之前，三位主任工程师必须正式批准这份数据库迁移提案（RFC）。',
-    sentence_audio_path: null,
-    pos_defs: [{ pos: 'v.', def: '正式批准；签署确认（技术提案或协议）' }],
-    options: [
-      { label: 'A', pos: 'v.', text: '驳回；否决（不合规的变更请求）' },
-      { label: 'B', pos: 'v.', text: '重构；梳理（杂乱的遗留模块）' },
-      { label: 'C', pos: 'v.', text: '正式批准；签署确认（提案或协议）' },
-      { label: 'D', pos: 'v.', text: '推迟；暂缓（非紧急功能上线）' },
-    ],
-    is_voice_target: true,
-    requeue_count: 0,
-    collocations: ['ratify the RFC', 'formally ratify', 'ratify an agreement'],
-    confusable_note:
-      'Do not confuse "ratify" (/ˈrætɪfaɪ/, v. 正式批准) with "rectify" (/ˈrektɪfaɪ/, v. 纠正/修正).',
-    topic_tag: '#rfc_governance',
-  },
-]
+const DEFAULT_PROFILE_MD = `# 用户画像
 
-const DEFAULT_PROFILE_MD = `# User Persona & Context
-- Role: Senior Backend & AI Agent Engineer
-- Style: Prefers deterministic Python harnesses, clean async SQLite, and concise technical English.
+## 身份背景
 
-## Active Projects & Daily Scenarios
-- Building a custom FSRS + Realtime S2S English Agent (vocab-voice-agent).
-- Leading payment webhook microservice migration & API deprecation RFC.
+- 职业：程序员（软件开发者）
+- 当前目标：准备跳槽到外企，需要能在英文技术面试与日常研发沟通中开口
+- 当前英语水平：能读简单单词，**几乎无法组织完整句子开口说话**，词汇量一般
+- 常用语境：程序员开发日常 —— 代码评审、需求讨论、线上故障排查、技术方案争论、每日站会
 
-## Recent Life & Work Updates (Auto-Compacted)
-- [Nov 4] Shipping payment webhook v2 next Friday; aligning rate-limit rules with leads.
-- [Nov 2] Discussed Web Audio 16kHz/24kHz PCM resampling on iOS Safari.`
+## 学习偏好
 
-const DEFAULT_ERRORS_MD = `# Active Linguistic Blindspots (Top 15)
-1. [PRONUNCIATION] 3-syllable -ate verbs stress: \`deprecate\` -> /ˈdeprəkeɪt/ (primary stress on 1st syllable DEP, not /dɪˈprekeɪt/).
-2. [GRAMMAR] First-conditional clauses in post-mortems: use present simple ("If the gateway times out...") instead of "would timeout".
-3. [WORD_CHOICE] Prefer precise engineering adjectives (\`idempotent\`, \`ephemeral\`) over informal compounds ("no-repeat", "short-time").`
+- 偏好具体、确定、可复用的表达，不喜欢空泛的鸡汤式例句
+- 能接受被纠正，但反感长篇说教
+
+## 近期动态
+`
+
+const DEFAULT_ERRORS_MD = `# 语言顽疾病历本
+
+> 由每日夜间 Compaction 自动聚合维护，保留最核心的 Top 15 条活跃病历。
+> 次日语音会话启动时注入 System Prompt，让语音模型优先关注这些薄弱点。
+
+## 发音易错点
+
+## 语法 / 用词盲区
+`
 
 interface AppStore {
   currentScreen: ScreenId
-  directoryOpen: boolean
   darkMode: boolean
   uiStateMode: UiStateOverride
   loading: boolean
@@ -161,6 +71,8 @@ interface AppStore {
   // Words & Mistakes
   words: WordRecord[]
   mistakes: LinguisticMistakeRecord[]
+  tagCounts: Record<string, number>
+  books: string[]
   selectedTopicTag: string
   selectedWordIds: number[]
   activeWordbookName: string
@@ -183,7 +95,7 @@ interface AppStore {
   userProfileMd: string
   errorPatternsMd: string
 
-  // Engine Router
+  // Study Quotas & Engine Router
   studyPlanQuotas: {
     daily_new_words: number
     daily_review_limit: number
@@ -199,7 +111,6 @@ interface AppStore {
 
   // Actions
   navigate: (screen: ScreenId) => void
-  setDirectoryOpen: (open: boolean) => void
   toggleDarkMode: () => void
   setUiStateMode: (mode: UiStateOverride) => void
   setAutoAudio: (v: boolean) => void
@@ -240,7 +151,6 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   currentScreen: '01-today-studio',
-  directoryOpen: false,
   darkMode: false,
   uiStateMode: 'default',
   loading: false,
@@ -249,84 +159,53 @@ export const useAppStore = create<AppStore>((set, get) => ({
   plan: {
     plan_date: new Date().toISOString().slice(0, 10),
     cached: true,
-    scenario_title: 'Episode 14: Production Post-Mortem & API Deprecation',
-    scenario_brief:
-      'Dear Alex, today we are prepping for Friday’s architecture sync. Let’s anchor 30 new engineering terms and 90 due reviews before our 25-minute live call tonight.',
-    status: 'STUDYING',
+    scenario_title: null,
+    scenario_brief: null,
+    status: undefined,
     progress: {
-      new: { total: 30, done: 14 },
-      review: { total: 90, done: 28 },
-      total: 120,
-      done: 42,
-      remaining: 78,
+      new: { total: 0, done: 0 },
+      review: { total: 0, done: 0 },
+      total: 0,
+      done: 0,
+      remaining: 0,
       all_done: false,
     },
   },
   stats: {
-    new: 1580,
-    due: 90,
-    total: 3000,
-    upcoming: [
-      { date: 'Today', offset: 0, count: 90 },
-      { date: 'Thu', offset: 1, count: 74 },
-      { date: 'Fri', offset: 2, count: 68 },
-      { date: 'Sat', offset: 3, count: 52 },
-      { date: 'Sun', offset: 4, count: 45 },
-      { date: 'Mon', offset: 5, count: 61 },
-      { date: 'Tue', offset: 6, count: 49 },
-    ],
+    new: 0,
+    due: 0,
+    learning: 0,
+    review: 0,
+    relearning: 0,
+    total: 0,
+    upcoming: [],
   },
-  cards: FALLBACK_CARDS,
+  cards: [],
   currentCardIndex: 0,
   selectedOption: null,
   lastReviewResult: null,
-  lastDurationMs: 2400,
+  lastDurationMs: 0,
   autoAudio: true,
   confusableExpanded: false,
 
   words: [],
-  mistakes: [
-    {
-      id: 1,
-      plan_date: 'Today',
-      mistake_type: 'PRONUNCIATION',
-      user_original: 'we need to de-PRE-cate (/dɪˈprekeɪt/) it',
-      corrected_version: 'we need to deprecate (/ˈdeprəkeɪt/) the legacy endpoint',
-      explanation: 'Primary stress on 1st syllable DEP',
-    },
-    {
-      id: 2,
-      plan_date: 'Today',
-      mistake_type: 'GRAMMAR',
-      user_original: 'If the gateway would timeout, the webhook retries twice.',
-      corrected_version: 'If the gateway times out, the webhook retries twice.',
-      explanation: 'Use present simple in high-probability technical conditionals',
-    },
-    {
-      id: 3,
-      plan_date: 'Today',
-      mistake_type: 'WORD_CHOICE',
-      user_original: 'We must make sure the retry logic is no-repeat.',
-      corrected_version: 'We must ensure the retry handler is strictly idempotent.',
-      explanation: 'Prefer domain adjective idempotent over informal no-repeat',
-    },
-  ],
+  mistakes: [],
+  tagCounts: {},
+  books: [],
   selectedTopicTag: 'all',
-  selectedWordIds: [1],
-  activeWordbookName: 'Core_3000_Engineer.json',
+  selectedWordIds: [],
+  activeWordbookName: '',
 
   voicePersona: 'Chelsie',
-  callElapsedSec: 868,
+  callElapsedSec: 0,
   isMuted: false,
   recastDismissed: false,
   hintStreaming: false,
-  hintTextEn:
-    'Our leads will only **ratify** the rollout schedule **contingent** on our load-test proving the database **bottleneck** is fully resolved.',
-  hintTextZh:
-    '只有当压测证明数据库瓶颈（bottleneck）已彻底解决，我们的技术负责人才能正式批准（ratify）上线排期，这完全视压测结果而定（contingent）。',
+  hintTextEn: '',
+  hintTextZh: '',
   playingHintDemo: false,
-  proactiveWords: ['deprecate', 'idempotent', 'payload'],
-  hintAssistedWords: ['ratify', 'contingent', 'bottleneck', 'ameliorate'],
+  proactiveWords: [],
+  hintAssistedWords: [],
 
   activeMemoryDoc: 'user_profile',
   memoryViewMode: 'raw',
@@ -344,17 +223,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
     realtime_voice: {
       provider: 'qwen_omni',
       base_url: '',
-      ws_url: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
-      api_key: 'sk-8f••••••••••••••••9a2c',
+      ws_url: '',
+      api_key: '',
       model_name: 'qwen-omni-turbo-realtime',
       voice_id: 'Chelsie',
     },
     text_llm: {
       provider: 'openai_compatible',
-      base_url: 'https://api.deepseek.com/v1',
+      base_url: '',
       ws_url: '',
-      api_key: 'sk-4d••••••••••••••••11e0',
-      model_name: 'deepseek-v4.1-flash',
+      api_key: '',
+      model_name: 'deepseek-chat',
       voice_id: '',
       temperature: 0.7,
     },
@@ -369,7 +248,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   navigate: (screen) => {
-    set({ currentScreen: screen, directoryOpen: false, confusableExpanded: false })
+    set({ currentScreen: screen, confusableExpanded: false })
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       url.searchParams.set('screen', screen)
@@ -377,8 +256,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     }
   },
-
-  setDirectoryOpen: (open) => set({ directoryOpen: open }),
 
   toggleDarkMode: () => {
     const next = !get().darkMode
@@ -394,12 +271,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   initBackendData: async () => {
     try {
-      let queueRes = await api.queue()
-      if (!queueRes.cards || queueRes.cards.length === 0) {
-        await api.seedDemo(false)
-        queueRes = await api.queue()
-      }
-      const [statsRes, wordsRes, cfgRes, memRes] = await Promise.all([
+      const [queueRes, statsRes, wordsRes, cfgRes, memRes] = await Promise.all([
+        api.queue(true).catch(() => null),
         api.stats().catch(() => null),
         api.wordsAndMistakes().catch(() => null),
         api.getConfig().catch(() => null),
@@ -407,43 +280,62 @@ export const useAppStore = create<AppStore>((set, get) => ({
       ])
 
       set((state) => {
-        const mergedCards =
-          queueRes.cards && queueRes.cards.length > 0
-            ? queueRes.cards.map((c, idx) => ({
-                ...FALLBACK_CARDS[idx % FALLBACK_CARDS.length],
-                ...c,
-                collocations:
-                  FALLBACK_CARDS.find((f) => f.word === c.word)?.collocations ?? [
-                    `${c.word} in production`,
-                    `strictly ${c.word}`,
-                  ],
-                confusable_note:
-                  FALLBACK_CARDS.find((f) => f.word === c.word)?.confusable_note ??
-                  `Pay attention to "${c.word}" (${c.phonetic_us ?? ''}) in technical architecture contexts.`,
-                topic_tag:
-                  FALLBACK_CARDS.find((f) => f.word === c.word)?.topic_tag ?? '#tech_architecture',
-              }))
-            : state.cards
+        const cards = queueRes?.cards ?? []
+        const firstSentenceCard = cards.find((c) => c.sentence_en)
+        const nextPlan: PlanResponse = {
+          plan_date: queueRes?.plan_date ?? new Date().toISOString().slice(0, 10),
+          cached: true,
+          scenario_title: queueRes?.scenario_title ?? null,
+          scenario_brief: queueRes?.scenario_brief ?? null,
+          status: queueRes?.status ?? undefined,
+          progress: queueRes?.progress ?? state.plan?.progress ?? {
+            new: { total: 0, done: 0 },
+            review: { total: 0, done: 0 },
+            total: 0,
+            done: 0,
+            remaining: 0,
+            all_done: false,
+          },
+        }
+
+        const mapModelStage = (
+          raw: Record<string, unknown> | undefined,
+          fallback: StageConfigState,
+        ): StageConfigState => {
+          if (!raw) return fallback
+          return {
+            provider: typeof raw.provider === 'string' && raw.provider ? raw.provider : fallback.provider,
+            base_url: typeof raw.base_url === 'string' ? raw.base_url : fallback.base_url,
+            ws_url: typeof raw.ws_url === 'string' ? raw.ws_url : fallback.ws_url,
+            api_key: '',
+            model_name:
+              typeof raw.model_name === 'string' && raw.model_name
+                ? raw.model_name
+                : fallback.model_name,
+            voice_id:
+              typeof raw.voice_id === 'string' && raw.voice_id ? raw.voice_id : fallback.voice_id,
+          }
+        }
+
+        const books = wordsRes?.books ?? []
 
         return {
-          cards: mergedCards,
-          stats:
-            statsRes && statsRes.total > 0
-              ? {
-                  ...statsRes,
-                  total: Math.max(statsRes.total, 3000),
-                  new: Math.max(statsRes.new, 1580),
-                  due: Math.max(statsRes.due, 90),
-                }
-              : state.stats,
-          words: wordsRes?.words?.length ? wordsRes.words : state.words,
-          mistakes: wordsRes?.mistakes?.length ? wordsRes.mistakes : state.mistakes,
+          cards,
+          plan: nextPlan,
+          stats: statsRes ?? state.stats,
+          words: wordsRes?.words ?? [],
+          mistakes: wordsRes?.mistakes ?? [],
+          tagCounts: wordsRes?.tag_counts ?? {},
+          books,
+          activeWordbookName: books[0] ?? '',
+          hintTextEn: firstSentenceCard?.sentence_en ?? '',
+          hintTextZh: firstSentenceCard?.sentence_zh ?? '',
           userProfileMd:
-            memRes?.user_profile && memRes.user_profile.trim().length > 20
+            typeof memRes?.user_profile === 'string' && memRes.user_profile.trim().length > 0
               ? memRes.user_profile
               : state.userProfileMd,
           errorPatternsMd:
-            memRes?.error_patterns && memRes.error_patterns.trim().length > 20
+            typeof memRes?.error_patterns === 'string' && memRes.error_patterns.trim().length > 0
               ? memRes.error_patterns
               : state.errorPatternsMd,
           studyPlanQuotas: cfgRes?.study_plan
@@ -454,59 +346,56 @@ export const useAppStore = create<AppStore>((set, get) => ({
                 voice_sliding_window_size: cfgRes.study_plan.voice_sliding_window_size ?? 4,
               }
             : state.studyPlanQuotas,
+          modelStages: cfgRes?.models
+            ? {
+                realtime_voice: mapModelStage(
+                  cfgRes.models.realtime_voice,
+                  state.modelStages.realtime_voice,
+                ),
+                text_llm: mapModelStage(cfgRes.models.text_llm, state.modelStages.text_llm),
+                tts: mapModelStage(cfgRes.models.tts, state.modelStages.tts),
+              }
+            : state.modelStages,
         }
       })
     } catch {
-      /* Fallback data remains active if backend is offline */
+      /* Keep clean empty state if backend is unreachable */
     }
   },
 
   regenerateDailyPlan: async () => {
     set({ loading: true, error: null })
     try {
-      await api.seedDemo(true)
-      const queueRes = await api.queue()
+      const planRes = await api.regeneratePlan()
+      const [queueRes, statsRes] = await Promise.all([
+        api.queue(true).catch(() => null),
+        api.stats().catch(() => null),
+      ])
       set((state) => ({
         loading: false,
         currentCardIndex: 0,
-        cards: queueRes.cards.length > 0 ? queueRes.cards : state.cards,
+        cards: queueRes?.cards ?? state.cards,
+        stats: statsRes ?? state.stats,
+        plan: {
+          ...planRes,
+          progress: queueRes?.progress ?? planRes.progress,
+        },
       }))
-      toast.success('Today’s 120-Word Scenario Plan Regenerated', {
-        description: 'Episode 14: Production Post-Mortem & API Deprecation ready.',
+      toast.success('今日场景学习计划已生成', {
+        description: planRes.scenario_title || '已完成今日新词与复习词聚类',
       })
-    } catch {
-      set({ loading: false })
-      toast.success('Scenario Plan Refreshed', {
-        description: 'Clustered 30 new words + 90 due reviews into Episode 14.',
-      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '请先导入词书并检查模型配置'
+      set({ loading: false, error: msg })
+      toast.error('生成今日计划失败', { description: msg })
     }
   },
 
   submitCardChoice: async (label, durationMs) => {
     const { cards, currentCardIndex } = get()
-    const card = cards[currentCardIndex] ?? FALLBACK_CARDS[0]
+    const card = cards[currentCardIndex]
+    if (!card) return
     set({ selectedOption: label, lastDurationMs: durationMs })
-
-    // Determine correctness locally for instant 0ms optimistic transition, then sync with backend FSRS
-    const correctMap: Record<string, string> = {
-      deprecate: 'B',
-      idempotent: 'A',
-      bottleneck: 'B',
-      ratify: 'C',
-      contingent: 'B',
-      ameliorate: 'A',
-      mitigate: 'B',
-      ephemeral: 'C',
-    }
-    const expectedLabel = correctMap[card.word] ?? 'B'
-    const isCorrectFallback = label === expectedLabel
-
-    if (isCorrectFallback) {
-      get().navigate('03-fsrs-sprint-reveal')
-    } else {
-      void api.playSpeech(card.word)
-      get().navigate('04-fsrs-sprint-wrong')
-    }
 
     try {
       const res = await api.reviewCard({
@@ -514,72 +403,60 @@ export const useAppStore = create<AppStore>((set, get) => ({
         selected_label: label,
         duration_ms: durationMs,
       })
-      set({ lastReviewResult: res })
-    } catch {
-      const autoRating = !isCorrectFallback ? 1 : durationMs < 3500 ? 4 : durationMs <= 8000 ? 3 : 2
-      set({
-        lastReviewResult: {
-          word_id: card.word_id,
-          is_correct: isCorrectFallback,
-          correct_labels: [expectedLabel],
-          rating: autoRating,
-          rating_source: 'auto',
-          requeued: !isCorrectFallback,
-          requeue_count: isCorrectFallback ? 0 : 1,
-          next_due: null,
-          progress: get().plan?.progress ?? {
-            new: { total: 30, done: 14 },
-            review: { total: 90, done: 29 },
-            total: 120,
-            done: 43,
-            remaining: 77,
-            all_done: false,
-          },
-        },
+      set((s) => ({
+        lastReviewResult: res,
+        plan: s.plan ? { ...s.plan, progress: res.progress } : s.plan,
+      }))
+      if (res.is_correct) {
+        get().navigate('03-fsrs-sprint-reveal')
+      } else {
+        void api.playSpeech(card.word)
+        get().navigate('04-fsrs-sprint-wrong')
+      }
+    } catch (err) {
+      toast.error('提交答题结果失败', {
+        description: err instanceof Error ? err.message : '请检查网络连接',
       })
     }
   },
 
   overrideCardRating: async (rating) => {
     const { cards, currentCardIndex, selectedOption, lastDurationMs } = get()
-    const card = cards[currentCardIndex] ?? FALLBACK_CARDS[0]
+    const card = cards[currentCardIndex]
+    if (!card) return
     try {
-      await api.reviewCard({
+      const res = await api.reviewCard({
         word_id: card.word_id,
-        selected_label: selectedOption ?? 'B',
+        selected_label: selectedOption,
         duration_ms: lastDurationMs,
         manual_rating: rating,
       })
+      set((s) => ({
+        lastReviewResult: res,
+        plan: s.plan ? { ...s.plan, progress: res.progress } : s.plan,
+      }))
     } catch {
       /* ignore */
     }
-    const labels: Record<number, string> = { 2: 'Hard (2d)', 3: 'Good (5d)', 4: 'Easy (11d)' }
-    toast.success(`FSRS Rating Updated → ${labels[rating]}`, {
-      description: `Stability curve updated for "${card.word}"`,
+    const labels: Record<number, string> = { 2: 'Hard', 3: 'Good', 4: 'Easy' }
+    toast.success(`FSRS 评级已更新 → ${labels[rating]}`, {
+      description: `已更新 "${card.word}" 的记忆稳定性曲线`,
     })
     get().nextSprintCard()
   },
 
   nextSprintCard: () => {
-    const { cards, currentCardIndex, plan } = get()
-    const nextIdx = (currentCardIndex + 1) % Math.max(1, cards.length)
-    const currentDone = plan?.progress.done ?? 42
-    const currentTotal = plan?.progress.total ?? 120
+    const { cards, currentCardIndex } = get()
+    if (cards.length === 0) {
+      get().navigate('01-today-studio')
+      return
+    }
+    const nextIdx = (currentCardIndex + 1) % cards.length
     set({
       currentCardIndex: nextIdx,
       selectedOption: null,
       lastReviewResult: null,
       confusableExpanded: false,
-      plan: plan
-        ? {
-            ...plan,
-            progress: {
-              ...plan.progress,
-              done: Math.min(currentTotal, currentDone + 1),
-              remaining: Math.max(0, currentTotal - (currentDone + 1)),
-            },
-          }
-        : null,
     })
     get().navigate('02-fsrs-sprint-question')
   },
@@ -595,76 +472,67 @@ export const useAppStore = create<AppStore>((set, get) => ({
   importWordbookFile: async (file) => {
     try {
       const res = await api.importWordbook(file)
-      set({ activeWordbookName: file.name })
-      toast.success(`Imported ${res.imported} words from ${file.name}`, {
-        description: `Skipped ${res.skipped} duplicates · FSRS cards initialized.`,
+      toast.success(`已从 ${file.name} 导入 ${res.imported} 个单词`, {
+        description: `跳过 ${res.skipped} 个重复词 · FSRS 记忆卡片已初始化`,
       })
-      const wordsRes = await api.wordsAndMistakes().catch(() => null)
-      if (wordsRes?.words?.length) {
-        set({ words: wordsRes.words })
-      }
+      const [wordsRes, statsRes] = await Promise.all([
+        api.wordsAndMistakes().catch(() => null),
+        api.stats().catch(() => null),
+      ])
+      set((s) => ({
+        activeWordbookName: res.book_name || file.name,
+        words: wordsRes?.words ?? s.words,
+        tagCounts: wordsRes?.tag_counts ?? s.tagCounts,
+        books: wordsRes?.books ?? s.books,
+        stats: statsRes ?? s.stats,
+      }))
     } catch (err) {
-      toast.error('Wordbook Import Failed', {
-        description: err instanceof Error ? err.message : 'Please check JSON/CSV format.',
+      toast.error('词书导入失败', {
+        description: err instanceof Error ? err.message : '请检查 JSON / CSV 文件格式',
       })
     }
   },
 
   setVoicePersona: (persona) => {
     set({ voicePersona: persona })
-    toast.success(`Voice Persona → ${persona}`, {
-      description: '24kHz full-duplex vocal timbre updated.',
-    })
+    toast.success(`音色已切换 → ${persona}`)
   },
 
   toggleMicMute: () => {
     const next = !get().isMuted
     set({ isMuted: next })
-    toast(next ? 'Microphone Muted' : 'Microphone Live (16kHz PCM)', {
-      description: next
-        ? 'Your audio stream is paused.'
-        : 'Hardware echo cancellation & VAD active.',
-    })
+    toast(next ? '麦克风已静音' : '麦克风已开启 (16kHz PCM)')
   },
 
   triggerNewHintAngle: () => {
-    const angles = [
-      {
-        en: 'Our leads will only **ratify** the rollout schedule **contingent** on our load-test proving the database **bottleneck** is fully resolved.',
-        zh: '只有当压测证明数据库瓶颈（bottleneck）已彻底解决，我们的技术负责人才能正式批准（ratify）上线排期，这完全视压测结果而定（contingent）。',
-      },
-      {
-        en: 'Before we **ratify** the v2 API contract, our rollout remains **contingent** on eliminating the Redis connection **bottleneck**.',
-        zh: '在我们正式批准（ratify）v2 接口契约前，上线计划取决于（contingent）能否彻底消除 Redis 连接瓶颈（bottleneck）。',
-      },
-      {
-        en: 'I asked the staff engineers to **ratify** our hotfix, which is **contingent** on isolating the write **bottleneck** first.',
-        zh: '我已请主任工程师批准（ratify）热修复方案，但这取决于（contingent）我们先隔离写入瓶颈（bottleneck）。',
-      },
-    ]
-    const current = get().hintTextEn
-    const nextAngle = angles.find((a) => a.en !== current) ?? angles[1]
-    set({ hintStreaming: true, hintTextEn: '', hintTextZh: nextAngle.zh })
-    let idx = 0
-    const words = nextAngle.en.split(' ')
-    const timer = window.setInterval(() => {
-      idx += 2
-      if (idx >= words.length) {
-        window.clearInterval(timer)
-        set({ hintStreaming: false, hintTextEn: nextAngle.en })
-      } else {
-        set({ hintTextEn: words.slice(0, idx).join(' ') })
-      }
-    }, 55)
+    const { cards, words } = get()
+    const sentenceCards = cards.filter((c) => c.sentence_en)
+    if (sentenceCards.length > 0) {
+      const current = get().hintTextEn
+      const nextCard =
+        sentenceCards.find((c) => c.sentence_en !== current) ?? sentenceCards[0]
+      set({
+        hintStreaming: false,
+        hintTextEn: nextCard.sentence_en ?? '',
+        hintTextZh: nextCard.sentence_zh ?? '',
+      })
+      return
+    }
+    if (words.length > 0) {
+      const sample = words.slice(0, 3).map((w) => w.word).join(', ')
+      set({
+        hintStreaming: false,
+        hintTextEn: `Try weaving these target words into your response: ${sample}.`,
+        hintTextZh: `尝试在回答中自然串联这些目标词：${sample}。`,
+      })
+    }
   },
 
   playHintDemoWithAutoMute: async () => {
+    const cleanText = get().hintTextEn.replace(/\*\*/g, '').trim()
+    if (!cleanText) return
     const wasMuted = get().isMuted
     set({ playingHintDemo: true, isMuted: true })
-    toast('Mic Auto-Paused During TTS Playback', {
-      description: 'Prevents speaker echo from triggering Server VAD.',
-    })
-    const cleanText = get().hintTextEn.replace(/\*\*/g, '')
     await api.playSpeech(cleanText, 0.96)
     set({ playingHintDemo: false, isMuted: wasMuted })
   },
@@ -675,14 +543,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       await api.completeVoiceSession({
         proactive_words: proactiveWords,
         hint_words: hintAssistedWords,
-        mistakes: [
-          {
-            category: 'PRONUNCIATION',
-            user_said: 'we need to de-PRE-cate (/dɪˈprekeɪt/) the old API',
-            suggested: 'we need to deprecate (/ˈdeprəkeɪt/) the legacy endpoint',
-            tip_zh: 'deprecate 重音在第一音节 /ˈdep/，注意不要读成 depreciate 的重音位置。',
-          },
-        ],
+        mistakes: [],
       })
     } catch {
       /* ignore */
@@ -710,7 +571,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } else {
       set({ errorPatternsMd: updated })
     }
-    toast.success(`Inserted "${snippet.trim()}" into ${activeMemoryDoc}.md`)
+    toast.success(`已插入到 ${activeMemoryDoc}.md`)
   },
 
   saveActiveMemory: async () => {
@@ -718,12 +579,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const content = activeMemoryDoc === 'user_profile' ? userProfileMd : errorPatternsMd
     try {
       await api.updateMemory(activeMemoryDoc, content)
-      toast.success(`Saved ${activeMemoryDoc}.md to /data/memory/`, {
-        description: `${new Blob([content]).size} bytes persisted · Ready for next prompt injection.`,
+      toast.success(`已保存 ${activeMemoryDoc}.md`, {
+        description: `${new Blob([content]).size} 字节已写入 /data/memory/`,
       })
-    } catch {
-      toast.success(`Saved ${activeMemoryDoc}.md`, {
-        description: 'Plaintext Markdown memory updated.',
+    } catch (err) {
+      toast.error(`保存 ${activeMemoryDoc}.md 失败`, {
+        description: err instanceof Error ? err.message : '请检查网络连接',
       })
     }
   },
@@ -735,12 +596,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
         userProfileMd: res.user_profile || get().userProfileMd,
         errorPatternsMd: res.error_patterns || get().errorPatternsMd,
       })
-      toast.success('Memory Compaction Complete', {
-        description: 'Deduplicated facts in user_profile.md & Top 15 error_patterns.md.',
+      toast.success('记忆整理完成', {
+        description: '已更新 user_profile.md 与 error_patterns.md',
       })
-    } catch {
-      toast.success('Memory Compaction Complete', {
-        description: 'Merged today’s session insights into plaintext Markdown memory.',
+    } catch (err) {
+      toast.error('记忆整理失败', {
+        description: err instanceof Error ? err.message : '请检查模型配置',
       })
     }
   },
@@ -787,12 +648,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
         text_llm: cleanStage(modelStages.text_llm),
         tts: cleanStage(modelStages.tts),
       })
-      toast.success('ProviderRegistry Hot-Reloaded', {
-        description: 'config.yaml updated · Zero-downtime runtime swap active.',
-      })
-    } catch {
-      toast.success('ProviderRegistry Hot-Reloaded', {
-        description: 'Runtime model routing and FSRS quotas applied.',
+      toast.success('学习与语音偏好已保存')
+    } catch (err) {
+      toast.error('配置保存失败', {
+        description: err instanceof Error ? err.message : '请检查服务状态',
       })
     }
   },

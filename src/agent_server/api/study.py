@@ -68,6 +68,7 @@ async def create_daily_plan(
     """
     ctx = get_context(request.app)
     target = plan_date or _today()
+    await _purge_legacy_demo_seed(session)
 
     from sqlalchemy import func, select
 
@@ -121,6 +122,70 @@ async def create_daily_plan(
     }
 
 
+async def _purge_legacy_demo_seed(session: AsyncSession) -> None:
+    """清理早期原型阶段误写入数据库的 Core_3000_Engineer / Dear Alex 演示假数据。"""
+    from sqlalchemy import delete, select
+
+    from ..db.models import (
+        DEFAULT_USER_ID,
+        DailyPlanItem,
+        DailyStudyPlan,
+        FSRSCard,
+        LinguisticMistake,
+        Word,
+    )
+
+    demo_word_ids = list(
+        (
+            await session.execute(
+                select(Word.id).where(
+                    Word.user_id == DEFAULT_USER_ID,
+                    Word.book_name == "Core_3000_Engineer",
+                )
+            )
+        ).scalars()
+    )
+    dirty = False
+    if demo_word_ids:
+        await session.execute(
+            delete(DailyPlanItem).where(DailyPlanItem.word_id.in_(demo_word_ids))
+        )
+        await session.execute(delete(FSRSCard).where(FSRSCard.word_id.in_(demo_word_ids)))
+        await session.execute(delete(Word).where(Word.id.in_(demo_word_ids)))
+        dirty = True
+
+    demo_plans = list(
+        (
+            await session.execute(
+                select(DailyStudyPlan).where(
+                    DailyStudyPlan.user_id == DEFAULT_USER_ID,
+                    DailyStudyPlan.scenario_brief.like("Dear Alex%"),
+                )
+            )
+        ).scalars()
+    )
+    for p in demo_plans:
+        await session.delete(p)
+        dirty = True
+
+    demo_mistakes = (
+        "we need to de-PRE-cate (/dɪˈprekeɪt/) the old API",
+        "If the gateway would timeout, the webhook retries twice.",
+        "We must make sure the retry logic is no-repeat.",
+    )
+    res = await session.execute(
+        delete(LinguisticMistake).where(
+            LinguisticMistake.user_id == DEFAULT_USER_ID,
+            LinguisticMistake.user_original.in_(demo_mistakes),
+        )
+    )
+    if res.rowcount:
+        dirty = True
+
+    if dirty:
+        await session.commit()
+
+
 @router.get("/study/queue")
 async def study_queue(
     request: Request,
@@ -128,10 +193,17 @@ async def study_queue(
     include_done: bool = False,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    from ..db.models import DEFAULT_USER_ID, DailyStudyPlan
+
+    await _purge_legacy_demo_seed(session)
     target = plan_date or _today()
     queue = await get_study_queue(session, target, include_done=include_done)
+    plan = await session.get(DailyStudyPlan, {"plan_date": target, "user_id": DEFAULT_USER_ID})
     return {
         "plan_date": target.isoformat(),
+        "scenario_title": plan.scenario_title if plan else None,
+        "scenario_brief": plan.scenario_brief if plan else None,
+        "status": plan.status if plan else None,
         "progress": await progress(session, target),
         "cards": [
             {
@@ -174,6 +246,7 @@ async def review_card(
 
 @router.get("/study/stats")
 async def study_stats(request: Request, session: AsyncSession = Depends(get_session)) -> dict:
+    await _purge_legacy_demo_seed(session)
     return await stats_snapshot(session)
 
 
@@ -189,6 +262,7 @@ async def list_words(
 
     from ..db.models import DEFAULT_USER_ID, FSRSCard, LinguisticMistake, Word
 
+    await _purge_legacy_demo_seed(session)
     stmt = (
         select(Word, FSRSCard)
         .join(FSRSCard, FSRSCard.word_id == Word.id)
@@ -235,319 +309,20 @@ async def list_words(
         }
         for (m,) in mistakes_rows
     ]
-    return {"words": words_out, "mistakes": mistakes_out}
-
-
-@router.post("/study/seed-demo")
-async def seed_demo_data(
-    request: Request,
-    reset: bool = False,
-    session: AsyncSession = Depends(get_session),
-) -> dict:
-    """在本地尚未配置外部 LLM Key 或首次启动时，灌入真实 SQLite + FSRS 场景种子数据。"""
-    from sqlalchemy import delete, func, select
-
-    from ..db.models import (
-        DEFAULT_USER_ID,
-        PLAN_STUDYING,
-        DailyPlanItem,
-        DailyStudyPlan,
-        FSRSCard,
-        LinguisticMistake,
-        Word,
+    all_words_rows = await session.execute(
+        select(Word.topic_tags, Word.book_name).where(Word.user_id == DEFAULT_USER_ID)
     )
-    from ..db.repos import add_words_with_cards
+    tag_counts: dict[str, int] = {}
+    books_set: set[str] = set()
+    for w_tags, b_name in all_words_rows:
+        if b_name:
+            books_set.add(b_name)
+        for t in w_tags or []:
+            tag_counts[t] = tag_counts.get(t, 0) + 1
 
-    target = _today()
-    existing_items = await session.scalar(
-        select(func.count())
-        .select_from(DailyPlanItem)
-        .where(DailyPlanItem.plan_date == target, DailyPlanItem.user_id == DEFAULT_USER_ID)
-    )
-    if existing_items and not reset:
-        return {
-            "seeded": False,
-            "plan_date": target.isoformat(),
-            "progress": await progress(session, target),
-        }
-
-    if reset:
-        await session.execute(
-            delete(DailyPlanItem).where(
-                DailyPlanItem.plan_date == target, DailyPlanItem.user_id == DEFAULT_USER_ID
-            )
-        )
-        await session.commit()
-
-    def _opt(label: str, pos: str, text: str, is_correct: bool = False) -> dict:
-        return {"label": label, "pos": pos, "text": text, "is_correct": is_correct}
-
-    seed_entries = [
-        {
-            "word": "deprecate",
-            "phonetic_us": "/ˈdeprəkeɪt/",
-            "pos_defs": [{"pos": "v.", "def": "弃用；不赞成使用（旧接口或功能）"}],
-            "topic_tags": ["tech_dev", "workplace_comm", "#API"],
-            "item_type": "NEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "We plan to deprecate the legacy webhook endpoint before Friday's "
-                "release so clients migrate cleanly."
-            ),
-            "sentence_zh": "我们计划在周五发布前弃用旧版 Webhook 端点，以便客户端平滑迁移。",
-            "options": [
-                _opt("A", "v.", "部署；调配（微服务节点与资源）"),
-                _opt("B", "v.", "弃用；不赞成使用（旧接口或功能）", True),
-                _opt("C", "v.", "降级；削减（系统非核心权限）"),
-                _opt("D", "v.", "委派；授权（底层调用任务）"),
-            ],
-        },
-        {
-            "word": "idempotent",
-            "phonetic_us": "/ˌaɪdemˈpoʊtənt/",
-            "pos_defs": [{"pos": "adj.", "def": "幂等的（多次执行结果一致）"}],
-            "topic_tags": ["tech_dev", "problem_solving", "#Arch"],
-            "item_type": "NEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "Ensure the payment retry webhook handler is strictly idempotent "
-                "so duplicate requests never double-charge."
-            ),
-            "sentence_zh": (
-                "务必确保支付重试 Webhook 处理器是严格幂等的，防止重复请求造成二次扣款。"
-            ),
-            "options": [
-                _opt("A", "adj.", "幂等的（多次请求产生相同副作用）", True),
-                _opt("B", "adj.", "异步的（非阻塞并发执行）"),
-                _opt("C", "adj.", "短暂的；临时的（生命周期极短）"),
-                _opt("D", "adj.", "冗余的（用于故障切换备份）"),
-            ],
-        },
-        {
-            "word": "bottleneck",
-            "phonetic_us": "/ˈbɑːtlnek/",
-            "pos_defs": [{"pos": "n.", "def": "瓶颈；阻碍系统吞吐的关键环节"}],
-            "topic_tags": ["tech_dev", "problem_solving", "#Perf"],
-            "item_type": "REVIEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "Connection pool contention became our primary database bottleneck "
-                "during the flash sale spike."
-            ),
-            "sentence_zh": "在秒杀流量高峰期间，连接池争用成为了我们主要的数据库性能瓶颈。",
-            "options": [
-                _opt("A", "n.", "吞吐量；单位时间处理定额"),
-                _opt("B", "n.", "瓶颈；限制整体性能的阻塞点", True),
-                _opt("C", "n.", "快照；特定时间点的状态副本"),
-                _opt("D", "n.", "载荷；传输协议中的核心数据"),
-            ],
-        },
-        {
-            "word": "ratify",
-            "phonetic_us": "/ˈrætɪfaɪ/",
-            "pos_defs": [{"pos": "v.", "def": "正式批准；签署确认（技术提案或协议）"}],
-            "topic_tags": ["workplace_comm", "#Gov"],
-            "item_type": "NEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "All three staff engineers must ratify the schema migration RFC "
-                "before we freeze the release branch."
-            ),
-            "sentence_zh": (
-                "在冻结发布分支之前，三位主任工程师必须正式批准这份数据库迁移提案（RFC）。"
-            ),
-            "options": [
-                _opt("A", "v.", "驳回；否决（不合规的变更请求）"),
-                _opt("B", "v.", "重构；梳理（杂乱的遗留模块）"),
-                _opt("C", "v.", "正式批准；签署确认（提案或协议）", True),
-                _opt("D", "v.", "推迟；暂缓（非紧急功能上线）"),
-            ],
-        },
-        {
-            "word": "contingent",
-            "phonetic_us": "/kənˈtɪndʒənt/",
-            "pos_defs": [{"pos": "adj.", "def": "依条件而定的；取决于…的"}],
-            "topic_tags": ["workplace_comm", "problem_solving", "#Contract"],
-            "item_type": "NEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "Friday's production rollout is contingent on passing the 10k-RPS "
-                "chaos load test today."
-            ),
-            "sentence_zh": "周五的生产环境上线取决于今天能否通过每秒万级请求的混沌压测。",
-            "options": [
-                _opt("A", "adj.", "强制性的；不可跳过执行的"),
-                _opt("B", "adj.", "依条件而定的；取决于…的", True),
-                _opt("C", "adj.", "向后兼容的；不破坏旧版的"),
-                _opt("D", "adj.", "立竿见影的；即时生效的"),
-            ],
-        },
-        {
-            "word": "ameliorate",
-            "phonetic_us": "/əˈmiːliəreɪt/",
-            "pos_defs": [{"pos": "v.", "def": "改善；缓解（糟糕的状况或高压负载）"}],
-            "topic_tags": ["problem_solving", "tech_dev", "#Refactor"],
-            "item_type": "REVIEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "Adding a local Redis read-through cache helped ameliorate the "
-                "tail latency on user profile queries."
-            ),
-            "sentence_zh": "增加一层本地 Redis 读穿透缓存，有效缓解了用户画像查询的长尾延迟。",
-            "options": [
-                _opt("A", "v.", "改善；缓解（不良状况或系统压力）", True),
-                _opt("B", "v.", "加剧；恶化（原有的架构缺陷）"),
-                _opt("C", "v.", "监控；追踪（分布式调用链路）"),
-                _opt("D", "v.", "隔离；熔断（出现故障的下游节点）"),
-            ],
-        },
-        {
-            "word": "mitigate",
-            "phonetic_us": "/ˈmɪtɪɡeɪt/",
-            "pos_defs": [{"pos": "v.", "def": "减轻；缓和（风险、故障冲击）"}],
-            "topic_tags": ["problem_solving", "tech_dev", "#Incident"],
-            "item_type": "REVIEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "We enabled rate-limiting at the edge gateway to mitigate the "
-                "impact of the upstream timeout storm."
-            ),
-            "sentence_zh": "我们在边缘网关开启了限流，以减轻上游超时风暴带来的冲击。",
-            "options": [
-                _opt("A", "v.", "触发；引起（连锁故障反应）"),
-                _opt("B", "v.", "减轻；缓和（故障影响或安全风险）", True),
-                _opt("C", "v.", "审计；核查（历史访问日志）"),
-                _opt("D", "v.", "枚举；遍历（所有可能的异常分支）"),
-            ],
-        },
-        {
-            "word": "ephemeral",
-            "phonetic_us": "/ɪˈfemərəl/",
-            "pos_defs": [{"pos": "adj.", "def": "短暂的；非持久化的（容器或临时存储）"}],
-            "topic_tags": ["tech_dev", "daily_life", "#Cloud"],
-            "item_type": "REVIEW",
-            "is_voice_target": True,
-            "sentence_en": (
-                "Never store unbacked transaction logs on ephemeral container "
-                "volumes that vanish on pod restart."
-            ),
-            "sentence_zh": "切勿将未备份的事务日志存储在容器重启即消失的临时卷上。",
-            "options": [
-                _opt("A", "adj.", "持久化的；写入磁盘保存的"),
-                _opt("B", "adj.", "分布式的；跨机房多活部署的"),
-                _opt("C", "adj.", "短暂的；非持久化的（随生命周期销毁）", True),
-                _opt("D", "adj.", "高可用的；具备自动故障转移的"),
-            ],
-        },
-    ]
-
-    await add_words_with_cards(session, seed_entries, book_name="Core_3000_Engineer")
-    await session.commit()
-
-    brief_text = (
-        "Dear Alex, today we are prepping for Friday’s architecture sync. "
-        "Let’s anchor our key engineering terms and due reviews before our "
-        "25-minute live call tonight."
-    )
-    plan = await session.get(DailyStudyPlan, {"plan_date": target, "user_id": DEFAULT_USER_ID})
-    if plan is None:
-        plan = DailyStudyPlan(
-            plan_date=target,
-            user_id=DEFAULT_USER_ID,
-            scenario_title="Episode 14: Production Post-Mortem & API Deprecation",
-            scenario_brief=brief_text,
-            status=PLAN_STUDYING,
-        )
-        session.add(plan)
-    else:
-        plan.scenario_title = "Episode 14: Production Post-Mortem & API Deprecation"
-        plan.scenario_brief = brief_text
-        plan.status = PLAN_STUDYING
-
-    word_rows = await session.execute(select(Word).where(Word.user_id == DEFAULT_USER_ID))
-    word_map = {w.word: w for (w,) in word_rows}
-
-    for idx, entry in enumerate(seed_entries):
-        w = word_map.get(entry["word"])
-        if not w:
-            continue
-        card = await session.get(FSRSCard, w.id)
-        if card and entry["item_type"] == "REVIEW" and card.stability is None:
-            card.stability = 8.4 + idx * 1.2
-            card.difficulty = 4.6
-            card.state = 2
-            card.reps = 3
-
-        existing_item = (
-            await session.execute(
-                select(DailyPlanItem).where(
-                    DailyPlanItem.plan_date == target,
-                    DailyPlanItem.user_id == DEFAULT_USER_ID,
-                    DailyPlanItem.word_id == w.id,
-                )
-            )
-        ).scalar_one_or_none()
-
-        if existing_item is None:
-            session.add(
-                DailyPlanItem(
-                    plan_date=target,
-                    user_id=DEFAULT_USER_ID,
-                    word_id=w.id,
-                    item_type=entry["item_type"],
-                    custom_sentence_en=entry["sentence_en"],
-                    custom_sentence_zh=entry["sentence_zh"],
-                    mcq_options=entry["options"],
-                    card_done=False,
-                    is_voice_target=entry["is_voice_target"],
-                    order_index=idx,
-                )
-            )
-
-    existing_mistakes = await session.scalar(
-        select(func.count())
-        .select_from(LinguisticMistake)
-        .where(LinguisticMistake.user_id == DEFAULT_USER_ID)
-    )
-    if not existing_mistakes:
-        session.add_all(
-            [
-                LinguisticMistake(
-                    plan_date=target,
-                    user_id=DEFAULT_USER_ID,
-                    mistake_type="PRONUNCIATION",
-                    user_original="we need to de-PRE-cate (/dɪˈprekeɪt/) the old API",
-                    corrected_version="we need to deprecate (/ˈdeprəkeɪt/) the legacy endpoint",
-                    explanation=(
-                        "deprecate 重音在第一音节 /ˈdep/，注意不要读成 depreciate 的重音位置。"
-                    ),
-                ),
-                LinguisticMistake(
-                    plan_date=target,
-                    user_id=DEFAULT_USER_ID,
-                    mistake_type="GRAMMAR",
-                    user_original="If the gateway would timeout, the webhook retries twice.",
-                    corrected_version="If the gateway times out, the webhook retries twice.",
-                    explanation=(
-                        "条件从句描述高概率技术场景时使用一般现在时 times out，不用 would。"
-                    ),
-                ),
-                LinguisticMistake(
-                    plan_date=target,
-                    user_id=DEFAULT_USER_ID,
-                    mistake_type="WORD_CHOICE",
-                    user_original="We must make sure the retry logic is no-repeat.",
-                    corrected_version="We must ensure the retry handler is strictly idempotent.",
-                    explanation="用专业架构词汇 idempotent（幂等的）替代口语化的 no-repeat。",
-                ),
-            ]
-        )
-
-    await session.commit()
     return {
-        "seeded": True,
-        "plan_date": target.isoformat(),
-        "scenario_title": plan.scenario_title,
-        "scenario_brief": plan.scenario_brief,
-        "progress": await progress(session, target),
+        "words": words_out,
+        "mistakes": mistakes_out,
+        "tag_counts": tag_counts,
+        "books": sorted(books_set),
     }

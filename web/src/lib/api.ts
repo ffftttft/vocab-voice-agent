@@ -50,15 +50,6 @@ export const api = {
       `/api/v1/study/words${tag && tag !== 'all' ? `?tag=${encodeURIComponent(tag)}` : ''}`,
     ),
 
-  seedDemo: (reset = false) =>
-    request<{
-      seeded: boolean
-      plan_date: string
-      scenario_title?: string
-      scenario_brief?: string
-      progress: PlanResponse['progress']
-    }>(`/api/v1/study/seed-demo?reset=${reset}`, { method: 'POST' }),
-
   getPlan: () => request<PlanResponse>('/api/v1/study/daily-plan', { method: 'POST' }),
 
   regeneratePlan: () =>

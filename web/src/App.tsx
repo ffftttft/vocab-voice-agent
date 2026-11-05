@@ -3,9 +3,8 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { Toaster } from 'sonner'
 import {
   FloatingBottomDock,
-  SCREEN_META,
   SINGLE_SCREEN_LOCKED,
-  ScreenDirectorySheet,
+  VALID_SCREENS,
 } from './components/ShellComponents'
 import type { ScreenId } from './lib/types'
 import EngineRouterPage from './pages/EngineRouterPage'
@@ -32,7 +31,7 @@ export default function App() {
       const screenParam = (
         rawScreen === '07-voice-lobby' ? '07-voice-studio-lobby' : rawScreen
       ) as ScreenId | null
-      if (screenParam && SCREEN_META.some((s) => s.id === screenParam)) {
+      if (screenParam && VALID_SCREENS.has(screenParam)) {
         navigate(screenParam)
       }
       if (import.meta.env.DEV) {
@@ -83,6 +82,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <div
+        style={{ paddingTop: 'max(6px, env(safe-area-inset-top, 6px))' }}
         className={`w-full max-w-[430px] mx-auto bg-[#F9F6F0] text-[#1C202B] relative ${
           isLockedSingleScreen
             ? 'h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col'
@@ -107,7 +107,6 @@ export default function App() {
         </AnimatePresence>
 
         <FloatingBottomDock />
-        <ScreenDirectorySheet />
         <Toaster
           position="top-center"
           toastOptions={{
