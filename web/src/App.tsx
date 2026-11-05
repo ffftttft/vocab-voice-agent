@@ -1,45 +1,127 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import Dashboard from './pages/Dashboard'
-import StudySession from './pages/StudySession'
-import VoiceCall from './pages/VoiceCall'
-import Settings from './pages/Settings'
-
-const tabs = [
-  { to: '/', label: '今日', icon: '◐' },
-  { to: '/study', label: '背词', icon: '▤' },
-  { to: '/voice', label: '口语', icon: '◉' },
-  { to: '/settings', label: '设置', icon: '⚙' },
-]
+import { useEffect } from 'react'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
+import { Toaster } from 'sonner'
+import {
+  FloatingBottomDock,
+  SCREEN_META,
+  SINGLE_SCREEN_LOCKED,
+  ScreenDirectorySheet,
+} from './components/ShellComponents'
+import type { ScreenId } from './lib/types'
+import EngineRouterPage from './pages/EngineRouterPage'
+import FsrsSprintPage from './pages/FsrsSprintPage'
+import LexiconPlanetPage from './pages/LexiconPlanetPage'
+import MemoryJournalPage from './pages/MemoryJournalPage'
+import TodayStudioPage from './pages/TodayStudioPage'
+import VoiceStudioPage from './pages/VoiceStudioPage'
+import { type UiStateOverride, useAppStore } from './store/useAppStore'
 
 export default function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Shell><Dashboard /></Shell>} />
-      <Route path="/study" element={<Shell><StudySession /></Shell>} />
-      <Route path="/voice" element={<VoiceCall />} />
-      <Route path="/settings" element={<Shell><Settings /></Shell>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  )
-}
+  const currentScreen = useAppStore((s) => s.currentScreen)
+  const navigate = useAppStore((s) => s.navigate)
+  const setUiStateMode = useAppStore((s) => s.setUiStateMode)
+  const initBackendData = useAppStore((s) => s.initBackendData)
+  const darkMode = useAppStore((s) => s.darkMode)
 
-function Shell({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    void initBackendData()
+
+    const applyUrlParams = () => {
+      const params = new URLSearchParams(window.location.search)
+      const rawScreen = params.get('screen')
+      const screenParam = (
+        rawScreen === '07-voice-lobby' ? '07-voice-studio-lobby' : rawScreen
+      ) as ScreenId | null
+      if (screenParam && SCREEN_META.some((s) => s.id === screenParam)) {
+        navigate(screenParam)
+      }
+      if (import.meta.env.DEV) {
+        const stateParam = params.get('state') as UiStateOverride | null
+        if (
+          stateParam &&
+          ['default', 'loading', 'empty', 'error', 'voice_ready', 'completed'].includes(stateParam)
+        ) {
+          setUiStateMode(stateParam)
+        }
+      }
+    }
+
+    applyUrlParams()
+    window.addEventListener('popstate', applyUrlParams)
+    return () => window.removeEventListener('popstate', applyUrlParams)
+  }, [initBackendData, navigate, setUiStateMode])
+
+  const isLockedSingleScreen = SINGLE_SCREEN_LOCKED.has(currentScreen)
+
+  const renderScreenContent = () => {
+    switch (currentScreen) {
+      case '01-today-studio':
+        return <TodayStudioPage />
+      case '02-fsrs-sprint-question':
+      case '03-fsrs-sprint-reveal':
+      case '04-fsrs-sprint-wrong':
+        return <FsrsSprintPage />
+      case '05-lexicon-planet':
+      case '06-wordbooks-tagging':
+        return <LexiconPlanetPage />
+      case '07-voice-studio-lobby':
+      case '08-voice-call-active':
+      case '09-voice-call-recast':
+      case '10-voice-call-hint':
+      case '11-session-wrapped':
+        return <VoiceStudioPage />
+      case '12-memory-journal':
+      case '13-memory-editor':
+        return <MemoryJournalPage />
+      case '14-engine-router':
+        return <EngineRouterPage />
+      default:
+        return <TodayStudioPage />
+    }
+  }
+
   return (
-    <>
-      {children}
-      <nav className="tabbar">
-        {tabs.map((t) => (
-          <NavLink
-            key={t.to}
-            to={t.to}
-            end={t.to === '/'}
-            className={({ isActive }) => `tabbar-item${isActive ? ' tabbar-item-active' : ''}`}
+    <MotionConfig reducedMotion="user">
+      <div
+        className={`w-full max-w-[430px] mx-auto bg-[#F9F6F0] text-[#1C202B] relative ${
+          isLockedSingleScreen
+            ? 'h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col'
+            : 'min-h-[100dvh] flex flex-col'
+        } ${darkMode ? 'dark' : ''}`}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.main
+            key={currentScreen}
+            initial={{ opacity: 0, y: isLockedSingleScreen ? 3 : 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: isLockedSingleScreen ? -2 : -4 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className={
+              isLockedSingleScreen
+                ? 'flex-1 flex flex-col min-h-0 overflow-hidden'
+                : 'flex-1 flex flex-col'
+            }
           >
-            <span className="tabbar-icon">{t.icon}</span>
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
-    </>
+            {renderScreenContent()}
+          </motion.main>
+        </AnimatePresence>
+
+        <FloatingBottomDock />
+        <ScreenDirectorySheet />
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            style: {
+              borderRadius: '18px',
+              background: '#1C202B',
+              color: '#F9F6F0',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
+              fontSize: '13px',
+              border: '1px solid rgba(255,255,255,0.12)',
+            },
+          }}
+        />
+      </div>
+    </MotionConfig>
   )
 }

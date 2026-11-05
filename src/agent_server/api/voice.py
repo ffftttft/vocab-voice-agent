@@ -225,3 +225,42 @@ async def hint_stream(session_id: int, request: Request) -> StreamingResponse:
             "Connection": "keep-alive",
         },
     )
+
+
+@router.post("/voice/complete-session")
+async def complete_voice_session(request: Request, body: dict) -> dict:
+    """语音实战结束时提交词汇激活与复盘结果，联动 FSRS Easy(+1) 奖励并落库。"""
+    ctx = get_context(request.app)
+    target_date = date.today()
+    proactive_words: list[str] = body.get("proactive_words", [])
+    hint_words: list[str] = body.get("hint_words", [])
+    mistakes: list[dict] = body.get("mistakes", [])
+
+    boosted = 0
+    async with ctx.session_factory() as db:
+        if hint_words:
+            await mark_hint_requested(db, target_date, hint_words)
+            for w in hint_words:
+                await mark_word_used(db, target_date, w, True)
+        for w in proactive_words:
+            res = await mark_word_used(db, target_date, w, True)
+            if res.get("fsrs_applied"):
+                boosted += 1
+        for m in mistakes:
+            db.add(
+                LinguisticMistake(
+                    plan_date=target_date,
+                    mistake_type=m.get("category", "PRONUNCIATION"),
+                    user_original=m.get("user_said", ""),
+                    corrected_version=m.get("suggested", ""),
+                    explanation=m.get("tip_zh", ""),
+                )
+            )
+        await db.commit()
+
+    return {
+        "status": "ok",
+        "proactive_count": len(proactive_words),
+        "hint_count": len(hint_words),
+        "fsrs_boosted": boosted,
+    }

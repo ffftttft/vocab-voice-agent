@@ -1,4 +1,20 @@
-/** 与后端 API 对齐的类型定义。 */
+/** 与后端 API 对齐的类型定义（Argon4 完整版）。 */
+
+export type ScreenId =
+  | '01-today-studio'
+  | '02-fsrs-sprint-question'
+  | '03-fsrs-sprint-reveal'
+  | '04-fsrs-sprint-wrong'
+  | '05-lexicon-planet'
+  | '06-wordbooks-tagging'
+  | '07-voice-studio-lobby'
+  | '08-voice-call-active'
+  | '09-voice-call-recast'
+  | '10-voice-call-hint'
+  | '11-session-wrapped'
+  | '12-memory-journal'
+  | '13-memory-editor'
+  | '14-engine-router'
 
 export interface McqOption {
   label: string
@@ -19,6 +35,9 @@ export interface StudyCard {
   pos_defs: { pos?: string; def?: string }[]
   is_voice_target: boolean
   requeue_count: number
+  collocations?: string[]
+  confusable_note?: string
+  topic_tag?: string
 }
 
 export interface Progress {
@@ -75,6 +94,34 @@ export interface PlanResponse {
   progress: Progress
 }
 
+export interface WordRecord {
+  id: number
+  word: string
+  phonetic_us: string
+  pos_defs: { pos?: string; def?: string }[]
+  topic_tags: string[]
+  book_name: string
+  state: number
+  stability: number | null
+  difficulty: number | null
+  reps: number
+  lapses: number
+}
+
+export interface LinguisticMistakeRecord {
+  id: number
+  plan_date: string
+  mistake_type: 'PRONUNCIATION' | 'GRAMMAR' | 'WORD_CHOICE' | string
+  user_original: string
+  corrected_version: string
+  explanation: string
+}
+
+export interface WordsAndMistakesResponse {
+  words: WordRecord[]
+  mistakes: LinguisticMistakeRecord[]
+}
+
 export interface TargetWord {
   word_id: number
   word: string
@@ -84,11 +131,31 @@ export interface TargetWord {
 }
 
 export type ServerEvent =
-  | { type: 'server.session_ready'; session_id: number; scenario_title: string; scenario_brief: string; target_words: string[]; progress: ServerProgress }
+  | {
+      type: 'server.session_ready'
+      session_id: number
+      scenario_title: string
+      scenario_brief: string
+      target_words: string[]
+      progress: ServerProgress
+    }
   | { type: 'server.speech_started' }
   | { type: 'server.transcript'; role: 'user' | 'assistant'; text: string; is_final: boolean }
-  | { type: 'server.word_used'; word: string; used_correctly: boolean; in_window: boolean; active_words: string[]; completed_words: string[] }
-  | { type: 'server.mistake_card'; category: string; user_said: string; suggested: string; tip_zh: string }
+  | {
+      type: 'server.word_used'
+      word: string
+      used_correctly: boolean
+      in_window: boolean
+      active_words: string[]
+      completed_words: string[]
+    }
+  | {
+      type: 'server.mistake_card'
+      category: string
+      user_said: string
+      suggested: string
+      tip_zh: string
+    }
   | { type: 'server.session_closed'; reason: string }
   | { type: 'server.error'; message: string }
 

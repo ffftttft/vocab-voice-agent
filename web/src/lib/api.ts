@@ -1,10 +1,11 @@
-/** 后端 API 客户端。所有请求集中在这里，页面不直接拼 URL。 */
+/** 后端 API 客户端与 TTS 音频播放器。 */
 
 import type {
   PlanResponse,
   QueueResponse,
   ReviewResult,
   Stats,
+  WordsAndMistakesResponse,
 } from './types'
 
 const BASE = ''
@@ -27,7 +28,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       const body = await res.json()
       if (typeof body?.detail === 'string') detail = body.detail
-      else if (Array.isArray(body?.detail)) detail = body.detail.map((d: { msg?: string }) => d.msg).join('; ')
+      else if (Array.isArray(body?.detail))
+        detail = body.detail.map((d: { msg?: string }) => d.msg).join('; ')
     } catch {
       /* 响应不是 JSON，保留默认文案 */
     }
@@ -36,10 +38,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+let activeAudio: HTMLAudioElement | null = null
+
 export const api = {
   health: () => request<{ status: string; today: string }>('/api/v1/health'),
 
   stats: () => request<Stats>('/api/v1/study/stats'),
+
+  wordsAndMistakes: (tag?: string) =>
+    request<WordsAndMistakesResponse>(
+      `/api/v1/study/words${tag && tag !== 'all' ? `?tag=${encodeURIComponent(tag)}` : ''}`,
+    ),
+
+  seedDemo: (reset = false) =>
+    request<{
+      seeded: boolean
+      plan_date: string
+      scenario_title?: string
+      scenario_brief?: string
+      progress: PlanResponse['progress']
+    }>(`/api/v1/study/seed-demo?reset=${reset}`, { method: 'POST' }),
 
   getPlan: () => request<PlanResponse>('/api/v1/study/daily-plan', { method: 'POST' }),
 
@@ -70,6 +88,51 @@ export const api = {
     return res.blob()
   },
 
+  /**
+   * 播放单词或句子发音（优先调用后端 Edge-TTS 缓存接口，离线或无声卡时回退 Web Speech API）。
+   */
+  playSpeech: async (text: string, rate = 1.0): Promise<void> => {
+    if (!text.trim()) return
+    try {
+      if (activeAudio) {
+        activeAudio.pause()
+        activeAudio = null
+      }
+      const blob = await api.speak(text)
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audio.playbackRate = rate
+      activeAudio = audio
+      await new Promise<void>((resolve) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(url)
+          resolve()
+        }
+        audio.onerror = () => {
+          URL.revokeObjectURL(url)
+          resolve()
+        }
+        audio.play().catch(() => {
+          URL.revokeObjectURL(url)
+          resolve()
+        })
+      })
+      return
+    } catch {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel()
+          const utter = new SpeechSynthesisUtterance(text)
+          utter.lang = 'en-US'
+          utter.rate = rate
+          window.speechSynthesis.speak(utter)
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  },
+
   importWordbook: async (file: File, bookName?: string) => {
     const form = new FormData()
     form.append('file', file)
@@ -87,6 +150,19 @@ export const api = {
     }>
   },
 
+  completeVoiceSession: (payload: {
+    proactive_words: string[]
+    hint_words: string[]
+    mistakes: { category: string; user_said: string; suggested: string; tip_zh: string }[]
+  }) =>
+    request<{ status: string; proactive_count: number; hint_count: number; fsrs_boosted: number }>(
+      '/api/v1/voice/complete-session',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+
   getConfig: () =>
     request<{
       study_plan: Record<string, number>
@@ -94,7 +170,7 @@ export const api = {
     }>('/api/v1/admin/config'),
 
   updateConfig: (patch: unknown) =>
-    request<{ status: string }>('/api/v1/admin/config', {
+    request<{ status: string; reloaded?: boolean }>('/api/v1/admin/config', {
       method: 'PUT',
       body: JSON.stringify(patch),
     }),
@@ -102,10 +178,16 @@ export const api = {
   getMemory: () => request<{ user_profile: string; error_patterns: string }>('/api/v1/admin/memory'),
 
   updateMemory: (doc: 'user_profile' | 'error_patterns', content: string) =>
-    request<{ status: string }>(`/api/v1/admin/memory/${doc}`, {
+    request<{ status: string; doc: string; bytes: number }>(`/api/v1/admin/memory/${doc}`, {
       method: 'PUT',
       body: JSON.stringify({ content }),
     }),
+
+  compactMemory: () =>
+    request<{ status: string; user_profile: string; error_patterns: string }>(
+      '/api/v1/admin/compact',
+      { method: 'POST' },
+    ),
 }
 
 export { ApiError }

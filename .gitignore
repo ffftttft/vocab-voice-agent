@@ -34,6 +34,7 @@ data/memory/*.md
 web/node_modules/
 web/dist/
 web/.vite/
+*.tsbuildinfo
 
 # superpowers 执行快照（git-ignored scratch，见 executing-plans 规范）
 .superpowers/
@@ -47,3 +48,10 @@ web/.vite/
 # 临时产物
 tmp/
 *.log
+
+# 设计验证截图 / 原型调试产物与设计稿（本地保留，不入库、不部署）
+docs/design/
+docs/ref/
+docs/design/**/verify/
+docs/design/**/impl-verify/
+docs/design/**/prototype/verify/

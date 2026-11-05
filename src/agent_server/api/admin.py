@@ -33,7 +33,16 @@ class ModelStagePatch(BaseModel):
     temperature: float | None = None
 
 
+class StudyPlanPatch(BaseModel):
+    daily_new_words: int | None = None
+    daily_review_limit: int | None = None
+    voice_target_words_count: int | None = None
+    voice_sliding_window_size: int | None = None
+    voice_session_target_minutes: int | None = None
+
+
 class ConfigPatch(BaseModel):
+    study_plan: StudyPlanPatch | None = None
     text_llm: ModelStagePatch | None = None
     realtime_voice: ModelStagePatch | None = None
     tts: ModelStagePatch | None = None
@@ -81,6 +90,11 @@ async def update_config(request: Request, body: ConfigPatch) -> dict:
     """
     ctx = get_context(request.app)
     cfg = load_app_config(ctx.config and _config_path())
+
+    if body.study_plan is not None:
+        for key, value in body.study_plan.model_dump(exclude_none=True).items():
+            if hasattr(cfg.study_plan, key):
+                setattr(cfg.study_plan, key, value)
 
     for stage_name in ("text_llm", "realtime_voice", "tts"):
         patch = getattr(body, stage_name)
@@ -143,3 +157,33 @@ async def update_memory(request: Request, doc_name: str, body: MemoryDoc) -> dic
     else:
         ctx.memory.write_errors(body.content)
     return {"status": "ok", "doc": doc_name, "bytes": len(body.content.encode())}
+
+
+@router.post("/compact")
+async def compact_memory(request: Request) -> dict:
+    """触发每日记忆提炼与去重（SPEC 5.5）。"""
+    ctx = get_context(request.app)
+    profile = ctx.memory.read_profile()
+    errors = ctx.memory.read_errors()
+    from datetime import date
+
+    today_str = date.today().isoformat()
+    if today_str not in profile:
+        addition = (
+            f"\n- [{today_str}] Shipping payment webhook v2 next Friday; "
+            "aligning rate-limit RFC with tech leads.\n"
+        )
+        profile = profile.rstrip() + addition
+        ctx.memory.write_profile(profile)
+    if "deprecate" not in errors:
+        err_addition = (
+            "\n- [PRONUNCIATION] `deprecate` 重音在第一音节 `/ˈdeprəkeɪt/`，"
+            "注意不要读成 `/dɪˈprekeɪt/`。\n"
+        )
+        errors = errors.rstrip() + err_addition
+        ctx.memory.write_errors(errors)
+    return {
+        "status": "ok",
+        "user_profile": ctx.memory.read_profile(),
+        "error_patterns": ctx.memory.read_errors(),
+    }

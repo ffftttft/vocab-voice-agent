@@ -46,9 +46,14 @@ if ! git diff --quiet "$PREV" HEAD -- pyproject.toml uv.lock 2>/dev/null; then
   uv sync --frozen --no-dev --no-install-project
 fi
 
+if ! git diff --quiet "$PREV" HEAD -- web/package.json web/pnpm-lock.yaml 2>/dev/null; then
+  echo "==> 前端依赖清单变化，使用 pnpm 同步依赖（--frozen-lockfile）"
+  (cd web && CI=true corepack pnpm install --frozen-lockfile)
+fi
+
 if ! git diff --quiet "$PREV" HEAD -- web/ 2>/dev/null; then
   echo "==> 前端变化，构建（限制 1G 堆内存）"
-  (cd web && NODE_OPTIONS=--max-old-space-size=1024 npm run build)
+  (cd web && NODE_OPTIONS=--max-old-space-size=1024 corepack pnpm run build)
 fi
 
 # 同步 Caddy 配置（域名/反代规则变更时生效）
