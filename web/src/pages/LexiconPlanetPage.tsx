@@ -2,12 +2,13 @@ import { useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { AnimatedNumber, LangTogglePill } from '../components/ShellComponents'
 import { useAppStore } from '../store/useAppStore'
-import { AnimatedNumber } from '../components/ShellComponents'
 
 export default function LexiconPlanetPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
   const navigate = useAppStore((s) => s.navigate)
+  const lang = useAppStore((s) => s.lang)
   const stats = useAppStore((s) => s.stats)
   const plan = useAppStore((s) => s.plan)
   const words = useAppStore((s) => s.words)
@@ -25,6 +26,7 @@ export default function LexiconPlanetPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedDayIdx, setSelectedDayIdx] = useState(0)
 
+  const isZh = lang === 'zh'
   const totalWords = stats?.total ?? words.length
   const currentBookLabel = activeWordbookName || books[0] || ''
 
@@ -36,7 +38,9 @@ export default function LexiconPlanetPage() {
       const firstDef =
         w.pos_defs?.[0]?.pos || w.pos_defs?.[0]?.def
           ? `${w.pos_defs[0].pos ?? ''} ${w.pos_defs[0].def ?? ''}`.trim()
-          : '点击听取发音'
+          : isZh
+            ? '点击听取发音'
+            : 'Tap to listen'
       const primaryTag = w.topic_tags?.[0] ?? 'general'
       const statusType =
         w.state === 2
@@ -46,12 +50,20 @@ export default function LexiconPlanetPage() {
             : ('new' as const)
       const statusLabel =
         w.state === 2
-          ? `Review · S: ${w.stability ?? 1}d`
+          ? isZh
+            ? `复习 · 稳定度 ${w.stability ?? 1}d`
+            : `Review · S: ${w.stability ?? 1}d`
           : w.state === 1
-            ? 'Learning'
+            ? isZh
+              ? '学习中'
+              : 'Learning'
             : w.state === 3
-              ? 'Relearning'
-              : 'New Card'
+              ? isZh
+                ? '重学中'
+                : 'Relearning'
+              : isZh
+                ? '新词卡片'
+                : 'New Card'
 
       return {
         id: w.id,
@@ -71,19 +83,27 @@ export default function LexiconPlanetPage() {
         : mappedCards.filter((c) => c.tags.includes(selectedTopicTag))
 
     const topicTabs = [
-      { id: 'all', label: `All (${totalWords})`, count: '' },
-      { id: 'tech_dev', label: 'tech_dev', count: `(${tagCounts.tech_dev ?? 0})` },
+      { id: 'all', label: isZh ? `全部 (${totalWords})` : `All (${totalWords})`, count: '' },
+      {
+        id: 'tech_dev',
+        label: isZh ? '技术研发' : 'tech_dev',
+        count: `(${tagCounts.tech_dev ?? 0})`,
+      },
       {
         id: 'workplace_comm',
-        label: 'workplace_comm',
+        label: isZh ? '职场沟通' : 'workplace_comm',
         count: `(${tagCounts.workplace_comm ?? 0})`,
       },
       {
         id: 'problem_solving',
-        label: 'problem_solving',
+        label: isZh ? '问题排查' : 'problem_solving',
         count: `(${tagCounts.problem_solving ?? 0})`,
       },
-      { id: 'daily_life', label: 'daily_life', count: `(${tagCounts.daily_life ?? 0})` },
+      {
+        id: 'daily_life',
+        label: isZh ? '日常表达' : 'daily_life',
+        count: `(${tagCounts.daily_life ?? 0})`,
+      },
     ]
 
     return (
@@ -107,26 +127,29 @@ export default function LexiconPlanetPage() {
             {/* Circular Back Button */}
             <button
               type="button"
-              aria-label="Go Back"
+              aria-label={isZh ? '返回词书星球' : 'Go Back'}
               onClick={() => navigate('05-lexicon-planet')}
-              className="w-11 h-11 rounded-full bg-white border border-[#EBE4D8] shadow-[0_2px_8px_rgba(45,38,30,0.06)] flex items-center justify-center text-[#1C202B] press-scale"
+              className="w-10 h-10 rounded-full bg-white border border-[#EBE4D8] shadow-[0_2px_8px_rgba(45,38,30,0.06)] flex items-center justify-center text-[#1C202B] press-scale"
             >
-              <span className="material-symbols-outlined text-[20px] leading-none">
+              <span className="material-symbols-outlined text-[18px] leading-none">
                 arrow_back_ios_new
               </span>
             </button>
 
             {/* Center Title */}
             <h1 className="font-headline italic text-xl font-medium tracking-tight text-[#1C202B]">
-              Wordbooks &amp; AI Tagging
+              {isZh ? '词书导入与分类' : 'Wordbooks & AI Tagging'}
             </h1>
 
-            {/* Right Honey-Gold Glowing Pill Badge */}
-            <div className="flex items-center gap-1.5 bg-[#FFF4D6] border border-[#F4B844]/40 px-2.5 py-1 rounded-full shadow-[0_0_12px_rgba(244,184,68,0.22)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#F4B844] animate-pulse" />
-              <span className="text-[11px] font-label font-semibold text-[#946300] tracking-tight">
-                <AnimatedNumber value={totalWords} /> Words
-              </span>
+            {/* Right: Lang Toggle + Word Count Badge */}
+            <div className="flex items-center gap-1.5">
+              <LangTogglePill />
+              <div className="flex items-center gap-1 bg-[#FFF4D6] border border-[#F4B844]/40 px-2.5 py-1 rounded-full shadow-[0_0_12px_rgba(244,184,68,0.22)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F4B844] animate-pulse" />
+                <span className="text-[11px] font-label font-semibold text-[#946300] tracking-tight">
+                  <AnimatedNumber value={totalWords} /> {isZh ? '词' : 'Words'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -146,17 +169,19 @@ export default function LexiconPlanetPage() {
                 </div>
                 <div>
                   <span className="block text-[10px] font-mono tracking-wider font-semibold text-[#8C857B] uppercase">
-                    FSRS • SEMANTIC ENGINE
+                    {isZh ? 'FSRS · 语境智能聚类' : 'FSRS • SEMANTIC ENGINE'}
                   </span>
                   <h2 className="text-[16px] font-headline font-semibold text-[#1C202B] leading-snug">
-                    Non-Sequential Scenario Clustering
+                    {isZh ? '告别按字母表死记硬背' : 'Non-Sequential Scenario Clustering'}
                   </h2>
                 </div>
               </div>
             </div>
 
             <p className="font-body text-[12.5px] leading-relaxed text-[#5A554C] mb-4">
-              上传任意 JSON 或 CSV 词书，系统自动初始化 FSRS 记忆卡片并按真实语境主题完成归类。
+              {isZh
+                ? '上传任意 JSON 或 CSV 词书，系统自动初始化 FSRS 记忆卡片并按真实语境主题完成归类。'
+                : 'Upload any JSON or CSV wordbook to initialize FSRS memory cards and automatically cluster words by scenario.'}
             </p>
 
             {/* Inner Dashed Ivory Dropzone */}
@@ -165,10 +190,12 @@ export default function LexiconPlanetPage() {
                 <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
               </div>
               <h3 className="text-xs font-body font-semibold text-[#1C202B]">
-                Upload JSON / CSV Wordbook
+                {isZh ? '上传 JSON / CSV 词书文件' : 'Upload JSON / CSV Wordbook'}
               </h3>
               <p className="text-[11px] font-mono text-[#8C857B] mt-0.5">
-                Fields: word, phonetic_us, pos_defs
+                {isZh
+                  ? '支持字段：word, phonetic_us, pos_defs'
+                  : 'Fields: word, phonetic_us, pos_defs'}
               </p>
 
               {/* Active File Indicator */}
@@ -180,11 +207,19 @@ export default function LexiconPlanetPage() {
                 />
                 <span className="truncate max-w-[240px]">
                   {currentBookLabel ? (
-                    <>
-                      Active: <strong className="font-medium text-[#1C202B]">{currentBookLabel}</strong> ({totalWords} words)
-                    </>
-                  ) : (
+                    isZh ? (
+                      <>
+                        当前词书：<strong className="font-medium text-[#1C202B]">{currentBookLabel}</strong>（{totalWords} 词）
+                      </>
+                    ) : (
+                      <>
+                        Active: <strong className="font-medium text-[#1C202B]">{currentBookLabel}</strong> ({totalWords} words)
+                      </>
+                    )
+                  ) : isZh ? (
                     '尚未导入词书 · 点击下方按钮选择文件'
+                  ) : (
+                    'No wordbook imported yet · Tap below to choose a file'
                   )}
                 </span>
               </div>
@@ -196,14 +231,16 @@ export default function LexiconPlanetPage() {
                 className="bg-[#1C202B] text-white text-xs font-body font-medium px-4 py-2.5 min-h-[44px] rounded-full inline-flex items-center gap-1.5 shadow-sm press-scale"
               >
                 <span className="material-symbols-outlined text-[15px]">folder_open</span>
-                <span>Browse File (.json / .csv)</span>
+                <span>
+                  {isZh ? '选择本地词书 (.json / .csv)' : 'Browse File (.json / .csv)'}
+                </span>
               </button>
             </div>
           </section>
 
           {/* Scenario Topic Filter Tabs */}
           <nav
-            aria-label="Scenario Topics"
+            aria-label={isZh ? '语境分类标签' : 'Scenario Topics'}
             className="relative -mx-4 px-4 overflow-x-auto no-scrollbar flex items-center gap-2 pt-1 pb-1"
           >
             {topicTabs.map((tab) => {
@@ -237,10 +274,12 @@ export default function LexiconPlanetPage() {
           {/* Section Title & Grid Metrics */}
           <div className="flex items-center justify-between px-1 pt-1">
             <span className="text-xs font-body font-semibold text-[#5A554C]">
-              Clustered Vocabulary Cards
+              {isZh ? '已归类词汇卡片' : 'Clustered Vocabulary Cards'}
             </span>
             <span className="text-[11px] font-mono text-[#8C857B]">
-              {filteredCards.length} / {totalWords} shown
+              {isZh
+                ? `显示 ${filteredCards.length} / 共 ${totalWords} 词`
+                : `${filteredCards.length} / ${totalWords} shown`}
             </span>
           </div>
 
@@ -248,12 +287,22 @@ export default function LexiconPlanetPage() {
           {uiStateMode === 'empty' || filteredCards.length === 0 ? (
             <div className="bg-white rounded-[24px] p-6 border border-[#EBE4D8] text-center space-y-2">
               <p className="font-headline italic text-lg text-[#1C202B]">
-                {totalWords === 0 ? '尚未导入词书' : '该分类下暂无词汇'}
+                {totalWords === 0
+                  ? isZh
+                    ? '尚未导入词书'
+                    : 'No Wordbook Imported Yet'
+                  : isZh
+                    ? '该分类下暂无词汇'
+                    : 'No words in this category'}
               </p>
               <p className="text-xs text-[#8C857B]">
                 {totalWords === 0
-                  ? '点击上方 Browse File 上传 JSON 或 CSV 词表文件，即可在此查看卡片。'
-                  : '切换其他标签或上传更多词汇。'}
+                  ? isZh
+                    ? '点击上方按钮上传 JSON 或 CSV 词表文件，即可在此查看卡片。'
+                    : 'Tap Browse File above to upload a JSON or CSV vocabulary deck.'
+                  : isZh
+                    ? '请切换其他主题标签或上传更多词汇。'
+                    : 'Switch topic tabs or upload additional words.'}
               </p>
             </div>
           ) : (
@@ -355,7 +404,7 @@ export default function LexiconPlanetPage() {
               auto_fix_high
             </span>
             <span className="font-body font-semibold text-[13.5px] tracking-tight">
-              Regenerate Today&apos;s Scenario Plan →
+              {isZh ? '生成今日场景学习计划 →' : "Regenerate Today's Scenario Plan →"}
             </span>
           </button>
         </footer>
@@ -376,14 +425,19 @@ export default function LexiconPlanetPage() {
         })
 
   const maxBarCount = Math.max(1, ...rawUpcoming.map((u) => u.count))
+  const dayShortZh = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   const upcomingBars = rawUpcoming.map((u, idx) => {
     const dt = new Date(`${u.date}T00:00:00`)
     const dayLabel =
       idx === 0
-        ? 'Today'
+        ? isZh
+          ? '今日'
+          : 'Today'
         : Number.isNaN(dt.getTime())
           ? `+${idx}d`
-          : dt.toLocaleDateString('en-US', { weekday: 'short' })
+          : isZh
+            ? dayShortZh[dt.getDay()]
+            : dt.toLocaleDateString('en-US', { weekday: 'short' })
     const height = u.count === 0 ? 8 : Math.max(14, Math.round((u.count / maxBarCount) * 68))
     return {
       day: dayLabel,
@@ -396,7 +450,8 @@ export default function LexiconPlanetPage() {
 
   const totalUpcomingDue = upcomingBars.reduce((acc, b) => acc + b.count, 0)
   const levelNum = Math.max(1, Math.floor(totalWords / 200) + 1)
-  const levelProgressPct = totalWords === 0 ? 0 : Math.min(100, Math.round(((totalWords % 200) / 200) * 100))
+  const levelProgressPct =
+    totalWords === 0 ? 0 : Math.min(100, Math.round(((totalWords % 200) / 200) * 100))
   const planDone = plan?.progress.done ?? 0
   const planTotal = plan?.progress.total ?? 0
   const planPct = planTotal > 0 ? Math.round((planDone / planTotal) * 100) : 0
@@ -410,15 +465,15 @@ export default function LexiconPlanetPage() {
       <div className="relative z-10 flex-1 pt-2">
         {/* 2. Hero Sky & Floating Level Bar */}
         <section className="px-4 pt-1 pb-2">
-          <div className="backdrop-blur-md bg-white/75 border border-white/70 shadow-sm rounded-full px-4 py-2.5 flex items-center justify-between">
-            <div className="flex flex-col">
+          <div className="backdrop-blur-md bg-white/75 border border-white/70 shadow-sm rounded-full px-4 py-2.5 flex items-center justify-between gap-2">
+            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-headline italic font-medium text-[17px] text-[#1C202B] leading-tight">
-                  Pip&apos;s Lexicon Planet
+                <span className="font-headline italic font-medium text-[17px] text-[#1C202B] leading-tight truncate">
+                  {isZh ? 'Pip 的词书星球' : "Pip's Lexicon Planet"}
                 </span>
-                <span className="inline-block w-2 h-2 rounded-full bg-[#58B37C] animate-pulse" />
+                <span className="inline-block w-2 h-2 rounded-full bg-[#58B37C] animate-pulse shrink-0" />
               </div>
-              <div className="w-28 bg-[#1C202B]/10 rounded-full h-[4px] mt-1.5 overflow-hidden">
+              <div className="w-24 bg-[#1C202B]/10 rounded-full h-[4px] mt-1.5 overflow-hidden">
                 <div
                   className="bg-[#F4B844] h-full rounded-full"
                   style={{ width: `${levelProgressPct}%` }}
@@ -426,20 +481,21 @@ export default function LexiconPlanetPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 shrink-0">
+              <LangTogglePill />
               <div className="text-right">
                 <span className="font-mono text-[11px] font-semibold text-[#1C202B] block tracking-tight">
                   Lv {levelNum}
                 </span>
                 <span className="font-mono text-[9.5px] text-[#5A554C] block leading-none">
-                  <AnimatedNumber value={totalWords} /> words
+                  <AnimatedNumber value={totalWords} /> {isZh ? '词' : 'words'}
                 </span>
               </div>
               <button
                 type="button"
-                aria-label="Import Wordbook"
+                aria-label={isZh ? '导入或管理词书' : 'Import Wordbook'}
                 onClick={() => navigate('06-wordbooks-tagging')}
-                className="w-11 h-11 rounded-full bg-[#1C202B] text-white flex items-center justify-center shadow-sm press-scale"
+                className="w-10 h-10 rounded-full bg-[#1C202B] text-white flex items-center justify-center shadow-sm press-scale"
               >
                 <span className="material-symbols-outlined text-[18px]">auto_stories</span>
               </button>
@@ -466,13 +522,18 @@ export default function LexiconPlanetPage() {
             <button
               type="button"
               onClick={() =>
-                toast.success(`FSRS Review Pool · ${stats?.review ?? 0} mature cards`)
+                toast.success(
+                  isZh
+                    ? `复习池 · 共 ${stats?.review ?? 0} 张成熟卡片`
+                    : `FSRS Review Pool · ${stats?.review ?? 0} mature cards`,
+                )
               }
               className="absolute top-4 left-1 z-20 backdrop-blur-md bg-white/85 border border-white shadow-[0_6px_16px_rgba(0,0,0,0.06)] rounded-full px-3 py-1.5 flex items-center gap-1.5 press-scale"
             >
               <span className="text-xs">⛲</span>
               <span className="text-[11px] font-semibold text-[#1C202B] font-body tracking-tight">
-                Review · <span className="font-mono text-[#2B579A]">{stats?.review ?? 0}</span>
+                {isZh ? '复习期' : 'Review'} ·{' '}
+                <span className="font-mono text-[#2B579A]">{stats?.review ?? 0}</span>
               </span>
             </button>
 
@@ -484,7 +545,8 @@ export default function LexiconPlanetPage() {
             >
               <span className="text-xs">🌻</span>
               <span className="text-[11px] font-semibold text-[#1C202B] font-body tracking-tight">
-                Due Today · <span className="font-mono text-[#946300]">{stats?.due ?? 0}</span>
+                {isZh ? '今日待复习' : 'Due Today'} ·{' '}
+                <span className="font-mono text-[#946300]">{stats?.due ?? 0}</span>
               </span>
             </button>
           </div>
@@ -495,10 +557,12 @@ export default function LexiconPlanetPage() {
           <div className="flex items-baseline justify-between mb-2.5">
             <div>
               <h2 className="font-headline italic text-[19px] font-medium text-[#1C202B] leading-snug">
-                Grown from your talks
+                {isZh ? '语境主题词群' : 'Grown from your talks'}
               </h2>
               <p className="text-[11.5px] text-[#8C857B] font-body">
-                Every scenario cluster holds active vocabulary memories
+                {isZh
+                  ? '每个语境词群都承载着可在真实对话中开口调用的词汇'
+                  : 'Every scenario cluster holds active vocabulary memories'}
               </p>
             </div>
             <button
@@ -506,7 +570,7 @@ export default function LexiconPlanetPage() {
               onClick={() => navigate('06-wordbooks-tagging')}
               className="text-xs font-semibold text-[#1C202B] flex items-center gap-0.5 py-1 px-2 rounded-lg press-scale"
             >
-              <span>Import Book</span>
+              <span>{isZh ? '导入词书' : 'Import Book'}</span>
               <span className="material-symbols-outlined text-[14px]">add</span>
             </button>
           </div>
@@ -516,42 +580,48 @@ export default function LexiconPlanetPage() {
               {
                 emoji: '🏡',
                 emojiBg: 'bg-[#E6F5EC]',
-                badge: 'Cluster',
+                badge: isZh ? '主题' : 'Cluster',
                 badgeClass: 'text-[#236B42] bg-[#E6F5EC]',
-                title: 'Tech & Dev',
-                count: `${tagCounts.tech_dev ?? 0} words`,
+                title: isZh ? '技术与研发' : 'Tech & Dev',
+                count: isZh ? `${tagCounts.tech_dev ?? 0} 词` : `${tagCounts.tech_dev ?? 0} words`,
                 tag: 'tech_dev',
               },
               {
                 emoji: '🌻',
                 emojiBg: 'bg-[#FFF4D6]',
-                badge: 'Cluster',
+                badge: isZh ? '主题' : 'Cluster',
                 badgeClass: 'text-[#946300] bg-[#FFF4D6]',
-                title: 'Workplace',
-                count: `${tagCounts.workplace_comm ?? 0} words`,
+                title: isZh ? '职场沟通' : 'Workplace',
+                count: isZh
+                  ? `${tagCounts.workplace_comm ?? 0} 词`
+                  : `${tagCounts.workplace_comm ?? 0} words`,
                 tag: 'workplace_comm',
               },
               {
                 emoji: '☕',
                 emojiBg: 'bg-[#EBF2FC]',
-                badge: 'Cluster',
+                badge: isZh ? '主题' : 'Cluster',
                 badgeClass: 'text-[#2B579A] bg-[#EBF2FC]',
-                title: 'Daily Life',
-                count: `${tagCounts.daily_life ?? 0} words`,
+                title: isZh ? '日常表达' : 'Daily Life',
+                count: isZh
+                  ? `${tagCounts.daily_life ?? 0} 词`
+                  : `${tagCounts.daily_life ?? 0} words`,
                 tag: 'daily_life',
               },
               {
                 emoji: '🎙️',
                 emojiBg: 'bg-[#F0EDFF]',
-                badge: 'Cluster',
+                badge: isZh ? '主题' : 'Cluster',
                 badgeClass: 'text-[#533FD1] bg-[#F0EDFF]',
-                title: 'Problem Solving',
-                count: `${tagCounts.problem_solving ?? 0} words`,
+                title: isZh ? '问题排查' : 'Problem Solving',
+                count: isZh
+                  ? `${tagCounts.problem_solving ?? 0} 词`
+                  : `${tagCounts.problem_solving ?? 0} words`,
                 tag: 'problem_solving',
               },
             ].map((cluster) => (
               <button
-                key={cluster.title}
+                key={cluster.tag}
                 type="button"
                 onClick={() => {
                   setSelectedTopicTag(cluster.tag)
@@ -587,15 +657,17 @@ export default function LexiconPlanetPage() {
           <div className="bg-white rounded-[26px] p-4 shadow-[0_8px_24px_rgba(45,38,30,0.04)] border border-[#EBE4D8]">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-headline italic text-[17px] font-medium text-[#1C202B]">
-                FSRS Memory Ecosystem
+                {isZh ? 'FSRS 记忆生态分布' : 'FSRS Memory Ecosystem'}
               </h3>
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold font-mono bg-[#E6F5EC] text-[#236B42] px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />
-                Total {totalWords}
+                {isZh ? `共 ${totalWords} 词` : `Total ${totalWords}`}
               </span>
             </div>
             <p className="text-[11px] text-[#8C857B] font-body mb-3">
-              Free Spaced Repetition Scheduler parameter weights active
+              {isZh
+                ? '基于 FSRS 间隔重复算法追踪四态记忆留存率'
+                : 'Free Spaced Repetition Scheduler parameter weights active'}
             </p>
 
             {/* 4 State Chips Grid */}
@@ -606,7 +678,7 @@ export default function LexiconPlanetPage() {
                 className="bg-[#F0EDFF] rounded-[16px] py-2 px-1 border border-[#9B8AFB]/20 press-scale"
               >
                 <span className="block text-[10px] uppercase font-semibold text-[#533FD1] tracking-wider">
-                  New
+                  {isZh ? '新词' : 'New'}
                 </span>
                 <span className="font-mono text-[13px] font-bold text-[#533FD1]">
                   <AnimatedNumber value={stats?.new ?? 0} />
@@ -618,7 +690,7 @@ export default function LexiconPlanetPage() {
                 className="bg-[#FFF4D6] rounded-[16px] py-2 px-1 border border-[#F4B844]/20 press-scale"
               >
                 <span className="block text-[10px] uppercase font-semibold text-[#946300] tracking-wider">
-                  Learn
+                  {isZh ? '学习中' : 'Learn'}
                 </span>
                 <span className="font-mono text-[13px] font-bold text-[#946300]">
                   <AnimatedNumber value={stats?.learning ?? 0} />
@@ -630,7 +702,7 @@ export default function LexiconPlanetPage() {
                 className="bg-[#E6F5EC] rounded-[16px] py-2 px-1 border border-[#58B37C]/20 press-scale"
               >
                 <span className="block text-[10px] uppercase font-semibold text-[#236B42] tracking-wider">
-                  Review
+                  {isZh ? '复习' : 'Review'}
                 </span>
                 <span className="font-mono text-[13px] font-bold text-[#236B42]">
                   <AnimatedNumber value={stats?.review ?? 0} />
@@ -642,7 +714,7 @@ export default function LexiconPlanetPage() {
                 className="bg-[#FCECE8] rounded-[16px] py-2 px-1 border border-[#E5735D]/20 press-scale"
               >
                 <span className="block text-[10px] uppercase font-semibold text-[#A83825] tracking-wider">
-                  Relearn
+                  {isZh ? '重学' : 'Relearn'}
                 </span>
                 <span className="font-mono text-[13px] font-bold text-[#A83825]">
                   <AnimatedNumber value={stats?.relearning ?? 0} />
@@ -652,10 +724,10 @@ export default function LexiconPlanetPage() {
 
             <div className="mt-4 pt-3 border-t border-[#F2ECE1] flex items-center justify-between">
               <span className="text-xs font-semibold text-[#1C202B] font-body">
-                7-Day FSRS Review Pressure
+                {isZh ? '未来 7 日复习压力预测' : '7-Day FSRS Review Pressure'}
               </span>
               <span className="font-mono text-[11px] text-[#5A554C]">
-                Total: {totalUpcomingDue} words
+                {isZh ? `合计: ${totalUpcomingDue} 词` : `Total: ${totalUpcomingDue} words`}
               </span>
             </div>
 
@@ -669,7 +741,11 @@ export default function LexiconPlanetPage() {
                     type="button"
                     onClick={() => {
                       setSelectedDayIdx(idx)
-                      toast(`${bar.date}: ${bar.count} FSRS reviews scheduled`)
+                      toast(
+                        isZh
+                          ? `${bar.date}：预计 ${bar.count} 个单词待复习`
+                          : `${bar.date}: ${bar.count} FSRS reviews scheduled`,
+                      )
                     }}
                     className="flex flex-col items-center gap-1.5 h-full justify-end cursor-pointer focus:outline-none"
                   >
@@ -716,12 +792,16 @@ export default function LexiconPlanetPage() {
             </div>
             <div className="flex-1 pr-1">
               <p className="text-xs font-semibold text-[#1C202B] leading-tight">
-                Today&apos;s Study &amp; Voice Progress
+                {isZh ? '今日背词与口语进度' : "Today's Study & Voice Progress"}
               </p>
               <p className="text-[11px] text-[#5A554C] mt-0.5 leading-snug">
                 {planTotal > 0
-                  ? `${planDone} of ${planTotal} FSRS cards completed today`
-                  : 'Generate today’s plan to start daily FSRS & voice practice'}
+                  ? isZh
+                    ? `今日已完成 ${planDone} / ${planTotal} 张记忆卡片`
+                    : `${planDone} of ${planTotal} FSRS cards completed today`
+                  : isZh
+                    ? '生成今日计划后即可开启背词与语音对练'
+                    : 'Generate today’s plan to start daily FSRS & voice practice'}
               </p>
             </div>
             <div className="flex flex-col items-end shrink-0 w-16">
@@ -748,8 +828,12 @@ export default function LexiconPlanetPage() {
             </div>
             <p className="font-headline italic text-[13px] text-[#1C202B] leading-snug">
               {totalWords > 0
-                ? `“当前词库共收录 ${totalWords} 个单词，待复习 ${stats?.due ?? 0} 个。”`
-                : '“点击右上角词书按钮导入你的第一份 JSON 或 CSV 词表吧！”'}
+                ? isZh
+                  ? `“当前词库共收录 ${totalWords} 个单词，待复习 ${stats?.due ?? 0} 个。”`
+                  : `“Your lexicon holds ${totalWords} words, with ${stats?.due ?? 0} due for review today.”`
+                : isZh
+                  ? '“点击右上角词书按钮导入你的第一份 JSON 或 CSV 词表吧！”'
+                  : '“Tap the wordbook icon in the top-right to import your first JSON or CSV deck!”'}
             </p>
           </div>
         </section>

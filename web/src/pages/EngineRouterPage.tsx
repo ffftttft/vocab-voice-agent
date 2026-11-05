@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useAppStore } from '../store/useAppStore'
-import { AnimatedNumber } from '../components/ShellComponents'
+import { AnimatedNumber, LangTogglePill } from '../components/ShellComponents'
 
 export default function EngineRouterPage() {
   const navigate = useAppStore((s) => s.navigate)
@@ -19,6 +19,10 @@ export default function EngineRouterPage() {
   const setAutoAudio = useAppStore((s) => s.setAutoAudio)
   const darkMode = useAppStore((s) => s.darkMode)
   const toggleDarkMode = useAppStore((s) => s.toggleDarkMode)
+  const lang = useAppStore((s) => s.lang)
+  const setLang = useAppStore((s) => s.setLang)
+  const openOnboarding = useAppStore((s) => s.openOnboarding)
+  const zh = lang === 'zh'
 
   const [reloading, setReloading] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -38,21 +42,21 @@ export default function EngineRouterPage() {
           {
             id: 'qwen_omni',
             title: 'Qwen-Omni',
-            sub: '24kHz S2S',
+            sub: zh ? '24kHz 实时语音' : '24kHz S2S',
             icon: 'hub',
             model: 'qwen-omni-turbo-realtime',
           },
           {
             id: 'doubao',
             title: 'Doubao',
-            sub: 'SeedDuplex',
+            sub: zh ? '双工语音流' : 'SeedDuplex',
             icon: 'waves',
             model: 'doubao-realtime-voice-v2',
           },
           {
             id: 'openai_realtime',
             title: 'OpenAI S2S',
-            sub: 'Realtime API',
+            sub: zh ? '实时语音接口' : 'Realtime API',
             icon: 'cloud_sync',
             model: 'gpt-4o-realtime-preview',
           },
@@ -62,21 +66,21 @@ export default function EngineRouterPage() {
             {
               id: 'openai_compatible',
               title: 'DeepSeek',
-              sub: 'OpenAI Compat',
+              sub: zh ? '兼容接口' : 'OpenAI Compat',
               icon: 'neurology',
               model: 'deepseek-chat',
             },
             {
               id: 'qwen_max',
               title: 'Qwen-Max',
-              sub: 'Structured',
+              sub: zh ? '结构化造句' : 'Structured',
               icon: 'hub',
               model: 'qwen-max-latest',
             },
             {
               id: 'openai_gpt4o',
               title: 'GPT-4o',
-              sub: 'Reasoning',
+              sub: zh ? '深度推理' : 'Reasoning',
               icon: 'auto_awesome',
               model: 'gpt-4o-2024-11-20',
             },
@@ -85,14 +89,14 @@ export default function EngineRouterPage() {
             {
               id: 'edge_tts',
               title: 'Edge-TTS',
-              sub: 'Neural Stream',
+              sub: zh ? '自然语音流' : 'Neural Stream',
               icon: 'graphic_eq',
               model: 'en-US-AndrewMultilingualNeural',
             },
             {
               id: 'cosyvoice',
               title: 'CosyVoice',
-              sub: '24kHz Neural',
+              sub: zh ? '24kHz 神经音色' : '24kHz Neural',
               icon: 'record_voice_over',
               model: 'cosyvoice-v2',
             },
@@ -119,16 +123,21 @@ export default function EngineRouterPage() {
       {/* Header Row */}
       <header className="w-full px-6 pt-1 pb-2 max-w-md mx-auto flex justify-between items-center z-10">
         <div>
-          <h1 className="font-headline italic text-[30px] leading-tight font-normal text-[#1C202B] tracking-tight">
-            Study &amp; Voice
+          <h1 className="font-headline italic text-[28px] leading-tight font-normal text-[#1C202B] tracking-tight">
+            {zh ? '学习与语音设置' : 'Study & Voice'}
           </h1>
           <p className="text-[12px] font-medium text-[#8C857B] tracking-wide mt-0.5">
-            Daily Pacing, Companion Voice &amp; Preferences
+            {zh ? '每日配额、语伴音色与界面偏好' : 'Daily Pacing, Companion Voice & Preferences'}
           </p>
         </div>
-        <div className="bg-[#E6F5EC] text-[#227248] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-[#58B37C]/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C] animate-pulse" />
-          <span className="font-mono text-[12px] font-medium">FSRS Active</span>
+        <div className="flex items-center gap-1.5">
+          <div className="bg-[#E6F5EC] text-[#227248] text-xs font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-[#58B37C]/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C] animate-pulse" />
+            <span className="font-mono text-[11px] font-medium">
+              {zh ? '算法就绪' : 'FSRS Active'}
+            </span>
+          </div>
+          <LangTogglePill />
         </div>
       </header>
 
@@ -145,17 +154,17 @@ export default function EngineRouterPage() {
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm flex-shrink-0 bg-[#F5E2D4]">
                 <img
-                  alt="Pip companion avatar"
+                  alt={zh ? '语伴头像' : 'Pip companion avatar'}
                   className="w-full h-full object-cover"
                   src="/assets/pip-avatar.png"
                 />
               </div>
               <div>
                 <h2 className="font-body font-bold text-[14px] text-[#1C202B] leading-tight flex items-center gap-1">
-                  FSRS Scheduler &amp; Daily Quotas
+                  {zh ? '间隔重复与每日配额' : 'FSRS Scheduler & Daily Quotas'}
                 </h2>
                 <p className="text-[12px] text-[#5A554C] font-medium">
-                  Deterministic spaced repetition pacing
+                  {zh ? '按记忆衰减曲线智能安排每日复习量' : 'Deterministic spaced repetition pacing'}
                 </p>
               </div>
             </div>
@@ -169,7 +178,9 @@ export default function EngineRouterPage() {
             {/* Tile 1: Daily New Words */}
             <div className="bg-white rounded-[18px] p-3 shadow-sm border border-[#E9E1D2] flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-[#8C857B]">Daily New Words</span>
+                <span className="text-[12px] font-semibold text-[#8C857B]">
+                  {zh ? '每日新词数' : 'Daily New Words'}
+                </span>
                 <span className="material-symbols-outlined text-[15px] text-[#F4B844]">
                   add_circle
                 </span>
@@ -181,7 +192,7 @@ export default function EngineRouterPage() {
                 <div className="flex items-center gap-1.5 bg-[#F9F6F0] p-1 rounded-full border border-[#EBE4D8]">
                   <button
                     type="button"
-                    aria-label="Decrease Daily New Words"
+                    aria-label={zh ? '减少每日新词数' : 'Decrease Daily New Words'}
                     onClick={() => adjustQuota('daily_new_words', -5, 5, 100)}
                     className="tap-target-expand w-7 h-7 rounded-full bg-white shadow-xs flex items-center justify-center text-xs font-bold text-[#1C202B] press-scale-sm"
                   >
@@ -189,7 +200,7 @@ export default function EngineRouterPage() {
                   </button>
                   <button
                     type="button"
-                    aria-label="Increase Daily New Words"
+                    aria-label={zh ? '增加每日新词数' : 'Increase Daily New Words'}
                     onClick={() => adjustQuota('daily_new_words', 5, 5, 100)}
                     className="tap-target-expand w-7 h-7 rounded-full bg-white shadow-xs flex items-center justify-center text-xs font-bold text-[#1C202B] press-scale-sm"
                   >
@@ -202,7 +213,9 @@ export default function EngineRouterPage() {
             {/* Tile 2: Daily Review Cap */}
             <div className="bg-white rounded-[18px] p-3 shadow-sm border border-[#E9E1D2] flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-[#8C857B]">Daily Review Cap</span>
+                <span className="text-[12px] font-semibold text-[#8C857B]">
+                  {zh ? '每日复习上限' : 'Daily Review Cap'}
+                </span>
                 <span className="material-symbols-outlined text-[15px] text-[#6A9AE2]">repeat</span>
               </div>
               <div className="flex items-end justify-between mt-1">
@@ -212,7 +225,7 @@ export default function EngineRouterPage() {
                 <div className="flex items-center gap-1.5 bg-[#F9F6F0] p-1 rounded-full border border-[#EBE4D8]">
                   <button
                     type="button"
-                    aria-label="Decrease Daily Review Cap"
+                    aria-label={zh ? '减少每日复习上限' : 'Decrease Daily Review Cap'}
                     onClick={() => adjustQuota('daily_review_limit', -10, 10, 300)}
                     className="tap-target-expand w-7 h-7 rounded-full bg-white shadow-xs flex items-center justify-center text-xs font-bold text-[#1C202B] press-scale-sm"
                   >
@@ -220,7 +233,7 @@ export default function EngineRouterPage() {
                   </button>
                   <button
                     type="button"
-                    aria-label="Increase Daily Review Cap"
+                    aria-label={zh ? '增加每日复习上限' : 'Increase Daily Review Cap'}
                     onClick={() => adjustQuota('daily_review_limit', 10, 10, 300)}
                     className="tap-target-expand w-7 h-7 rounded-full bg-white shadow-xs flex items-center justify-center text-xs font-bold text-[#1C202B] press-scale-sm"
                   >
@@ -233,7 +246,9 @@ export default function EngineRouterPage() {
             {/* Tile 3: Voice Target Pool */}
             <div className="bg-white rounded-[18px] p-3 shadow-sm border border-[#E9E1D2] flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-[#8C857B]">Voice Target Pool</span>
+                <span className="text-[12px] font-semibold text-[#8C857B]">
+                  {zh ? '口语目标词数' : 'Voice Target Pool'}
+                </span>
                 <span className="material-symbols-outlined text-[15px] text-[#E5735D]">
                   record_voice_over
                 </span>
@@ -243,10 +258,14 @@ export default function EngineRouterPage() {
                   <span className="text-xl font-bold font-body text-[#1C202B]">
                     {studyPlanQuotas.voice_target_words_count}
                   </span>
-                  <span className="text-[12px] text-[#5A554C] font-medium">words</span>
+                  <span className="text-[12px] text-[#5A554C] font-medium">
+                    {zh ? '词' : 'words'}
+                  </span>
                 </div>
                 <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-[#EBF2FC] text-[#2B579A] text-[12px] font-mono font-medium">
-                  Window: {studyPlanQuotas.voice_sliding_window_size} active
+                  {zh
+                    ? `每组 ${studyPlanQuotas.voice_sliding_window_size} 词`
+                    : `Window: ${studyPlanQuotas.voice_sliding_window_size} active`}
                 </div>
               </div>
             </div>
@@ -254,7 +273,9 @@ export default function EngineRouterPage() {
             {/* Tile 4: FSRS Target Ret. */}
             <div className="bg-white rounded-[18px] p-3 shadow-sm border border-[#E9E1D2] flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-[#8C857B]">Target Retention</span>
+                <span className="text-[12px] font-semibold text-[#8C857B]">
+                  {zh ? '目标记忆留存率' : 'Target Retention'}
+                </span>
                 <span className="material-symbols-outlined text-[15px] text-[#58B37C]">
                   verified
                 </span>
@@ -262,10 +283,12 @@ export default function EngineRouterPage() {
               <div className="mt-1">
                 <div className="flex items-baseline gap-1">
                   <span className="text-xl font-bold font-body text-[#1C202B]">90%</span>
-                  <span className="text-[12px] text-[#5A554C]">recall</span>
+                  <span className="text-[12px] text-[#5A554C]">
+                    {zh ? '回忆率' : 'recall'}
+                  </span>
                 </div>
                 <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-[#E6F5EC] text-[#236B42] text-[12px] font-mono font-medium">
-                  Fuzzing: ON
+                  {zh ? '平滑离散：开启' : 'Fuzzing: ON'}
                 </div>
               </div>
             </div>
@@ -276,9 +299,9 @@ export default function EngineRouterPage() {
         <section className="bg-white rounded-[26px] p-4.5 shadow-sm border border-[#ECE5D8] space-y-4">
           <div>
             <div className="text-[12px] font-semibold text-[#8C857B] mb-1.5 flex justify-between items-center">
-              <span>Pip&apos;s Vocal Persona</span>
+              <span>{zh ? 'Pip 语伴音色' : "Pip's Vocal Persona"}</span>
               <span className="text-[11px] font-mono text-[#2B579A] bg-[#EBF2FC] px-2 py-0.5 rounded">
-                Full-Duplex Voice
+                {zh ? '全双工语音' : 'Full-Duplex Voice'}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
@@ -306,20 +329,36 @@ export default function EngineRouterPage() {
             </div>
           </div>
 
-          {/* Sprint Auto-Audio & Appearance Toggles */}
+          {/* Sprint Auto-Audio & Appearance & UI Language Toggles */}
           <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#F2ECE1]">
             <button
               type="button"
               onClick={() => {
                 setAutoAudio(!autoAudio)
-                toast(autoAudio ? 'Auto Sentence Audio OFF' : 'Auto Sentence Audio ON')
+                toast(
+                  zh
+                    ? autoAudio
+                      ? '已关闭例句自动朗读'
+                      : '已开启例句自动朗读'
+                    : autoAudio
+                      ? 'Auto Sentence Audio OFF'
+                      : 'Auto Sentence Audio ON',
+                )
               }}
               className="bg-[#F9F6F0] border border-[#EBE3D3] rounded-2xl p-3 text-left flex items-center justify-between press-scale min-h-[54px]"
             >
               <div>
-                <div className="text-xs font-bold text-[#1C202B]">Sprint Audio</div>
+                <div className="text-xs font-bold text-[#1C202B]">
+                  {zh ? '背词自动朗读' : 'Sprint Audio'}
+                </div>
                 <div className="text-[11px] text-[#8C857B]">
-                  {autoAudio ? 'Auto-play ON' : 'Manual tap'}
+                  {zh
+                    ? autoAudio
+                      ? '自动播放开启'
+                      : '手动点击播放'
+                    : autoAudio
+                      ? 'Auto-play ON'
+                      : 'Manual tap'}
                 </div>
               </div>
               <span className="material-symbols-outlined text-[18px] text-[#1C202B]">
@@ -331,18 +370,77 @@ export default function EngineRouterPage() {
               type="button"
               onClick={() => {
                 toggleDarkMode()
-                toast(darkMode ? 'Daylight Alabaster Theme' : 'Nocturnal Parchment Theme')
+                toast(
+                  zh
+                    ? darkMode
+                      ? '已切换为暖白日间主题'
+                      : '已切换为夜间护眼主题'
+                    : darkMode
+                      ? 'Daylight Alabaster Theme'
+                      : 'Nocturnal Parchment Theme',
+                )
               }}
               className="bg-[#F9F6F0] border border-[#EBE3D3] rounded-2xl p-3 text-left flex items-center justify-between press-scale min-h-[54px]"
             >
               <div>
-                <div className="text-xs font-bold text-[#1C202B]">Appearance</div>
+                <div className="text-xs font-bold text-[#1C202B]">
+                  {zh ? '界面外观' : 'Appearance'}
+                </div>
                 <div className="text-[11px] text-[#8C857B]">
-                  {darkMode ? 'Nocturnal Dark' : 'Warm Daylight'}
+                  {zh
+                    ? darkMode
+                      ? '夜间护眼'
+                      : '暖白纸张'
+                    : darkMode
+                      ? 'Nocturnal Dark'
+                      : 'Warm Daylight'}
                 </div>
               </div>
               <span className="material-symbols-outlined text-[18px] text-[#1C202B]">
                 {darkMode ? 'light_mode' : 'dark_mode'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const next = zh ? 'en' : 'zh'
+                setLang(next)
+                toast(next === 'zh' ? '已切换为纯中文界面' : 'Switched to English UI')
+              }}
+              className="bg-[#F9F6F0] border border-[#EBE3D3] rounded-2xl p-3 text-left flex items-center justify-between press-scale min-h-[54px]"
+            >
+              <div>
+                <div className="text-xs font-bold text-[#1C202B]">
+                  {zh ? '界面语言' : 'UI Language'}
+                </div>
+                <div className="text-[11px] text-[#8C857B]">
+                  {zh ? '当前：纯中文' : 'Current: English'}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[18px] text-[#1C202B]">
+                translate
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                navigate('01-today-studio')
+                window.setTimeout(() => openOnboarding(0), 120)
+              }}
+              className="bg-[#F9F6F0] border border-[#EBE3D3] rounded-2xl p-3 text-left flex items-center justify-between press-scale min-h-[54px]"
+            >
+              <div>
+                <div className="text-xs font-bold text-[#1C202B]">
+                  {zh ? '新手引导' : 'User Guide'}
+                </div>
+                <div className="text-[11px] text-[#8C857B]">
+                  {zh ? '查看核心三步' : 'Replay 3-step tour'}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[18px] text-[#2B579A]">
+                explore
               </span>
             </button>
           </div>
@@ -358,7 +456,7 @@ export default function EngineRouterPage() {
                 <span className="material-symbols-outlined text-[16px] text-[#5A554C]">
                   description
                 </span>
-                <span>Memory (.md)</span>
+                <span>{zh ? '记忆文档' : 'Memory (.md)'}</span>
               </span>
               <span className="material-symbols-outlined text-[14px] text-[#8C857B]">
                 chevron_right
@@ -374,7 +472,7 @@ export default function EngineRouterPage() {
                 <span className="material-symbols-outlined text-[16px] text-[#5A554C]">
                   upload_file
                 </span>
-                <span>Wordbooks</span>
+                <span>{zh ? '词书导入' : 'Wordbooks'}</span>
               </span>
               <span className="material-symbols-outlined text-[14px] text-[#8C857B]">
                 chevron_right
@@ -398,7 +496,13 @@ export default function EngineRouterPage() {
               check_circle
             </span>
             <span>
-              {reloading ? 'Saving Study Preferences...' : 'Save Study & Voice Preferences'}
+              {reloading
+                ? zh
+                  ? '正在保存设置...'
+                  : 'Saving Study Preferences...'
+                : zh
+                  ? '保存学习与语音设置'
+                  : 'Save Study & Voice Preferences'}
             </span>
           </button>
         </div>
@@ -417,10 +521,12 @@ export default function EngineRouterPage() {
               </span>
               <div>
                 <span className="text-xs font-semibold text-[#1C202B] block">
-                  Advanced / Developer Model Routing
+                  {zh ? '高级模型路由设置（开发者）' : 'Advanced / Developer Model Routing'}
                 </span>
                 <span className="text-[10.5px] text-[#8C857B] font-mono">
-                  3-Stage AI Pipeline (S2S · Text LLM · TTS)
+                  {zh
+                    ? '三阶段引擎（实时语音 · 文本推理 · 语音合成）'
+                    : '3-Stage AI Pipeline (S2S · Text LLM · TTS)'}
                 </span>
               </div>
             </div>
@@ -441,9 +547,9 @@ export default function EngineRouterPage() {
                   {/* Stage Filter Tabs */}
                   <div className="bg-[#ECE4D4] p-1 rounded-full flex items-center justify-between gap-1 text-[12px] font-semibold">
                     {[
-                      { stage: 1 as const, label: '1. S2S Duplex' },
-                      { stage: 2 as const, label: '2. Text LLM' },
-                      { stage: 3 as const, label: '3. TTS Audio' },
+                      { stage: 1 as const, label: zh ? '1. 实时语音' : '1. S2S Duplex' },
+                      { stage: 2 as const, label: zh ? '2. 文本推理' : '2. Text LLM' },
+                      { stage: 3 as const, label: zh ? '3. 语音合成' : '3. TTS Audio' },
                     ].map((tab) => {
                       const active = activeRouterStage === tab.stage
                       return (
@@ -472,7 +578,11 @@ export default function EngineRouterPage() {
                           onClick={() => {
                             updateStageField(stageKey, 'provider', cand.id)
                             updateStageField(stageKey, 'model_name', cand.model)
-                            toast.success(`Selected ${cand.title} (${cand.model})`)
+                            toast.success(
+                              zh
+                                ? `已选择 ${cand.title} (${cand.model})`
+                                : `Selected ${cand.title} (${cand.model})`,
+                            )
                           }}
                           className={`relative rounded-[16px] p-2.5 flex flex-col justify-between h-[84px] text-left press-scale ${
                             selected
@@ -490,7 +600,7 @@ export default function EngineRouterPage() {
                             </span>
                             {selected && (
                               <span className="inline-flex items-center bg-[#58B37C] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-full">
-                                Active
+                                {zh ? '当前' : 'Active'}
                               </span>
                             )}
                           </div>
@@ -509,7 +619,9 @@ export default function EngineRouterPage() {
 
                   {/* Active Model Name */}
                   <div className="bg-[#F9F6F0] rounded-[14px] px-3 py-2 flex items-center justify-between border border-[#EBE3D3]">
-                    <span className="text-[11px] font-semibold text-[#8C857B]">Active Model</span>
+                    <span className="text-[11px] font-semibold text-[#8C857B]">
+                      {zh ? '当前模型' : 'Active Model'}
+                    </span>
                     <span className="font-mono text-[12px] text-[#1C202B] font-medium truncate">
                       {currentStageConfig.model_name}
                     </span>
@@ -523,15 +635,23 @@ export default function EngineRouterPage() {
                       className="text-[11px] font-mono text-[#8C857B] underline decoration-dotted press-scale"
                     >
                       {showCustomOverride
-                        ? 'Hide custom endpoint / key override'
-                        : 'Override server .env endpoint or key (optional)'}
+                        ? zh
+                          ? '收起自定义接口与密钥覆盖'
+                          : 'Hide custom endpoint / key override'
+                        : zh
+                          ? '覆盖服务端默认接口或密钥（可选）'
+                          : 'Override server .env endpoint or key (optional)'}
                     </button>
 
                     {showCustomOverride && (
                       <div className="mt-2.5 space-y-2">
                         <input
                           type="text"
-                          placeholder="Custom Base / WS URL (leave blank for server default)"
+                          placeholder={
+                            zh
+                              ? '自定义接口地址（留空则使用服务端默认）'
+                              : 'Custom Base / WS URL (leave blank for server default)'
+                          }
                           value={
                             activeRouterStage === 1
                               ? currentStageConfig.ws_url
@@ -548,7 +668,11 @@ export default function EngineRouterPage() {
                         />
                         <input
                           type="password"
-                          placeholder="Custom API Key (managed via server .env)"
+                          placeholder={
+                            zh
+                              ? '自定义密钥（默认由服务端环境变量管理）'
+                              : 'Custom API Key (managed via server .env)'
+                          }
                           value={currentStageConfig.api_key}
                           onChange={(e) => updateStageField(stageKey, 'api_key', e.target.value)}
                           className="w-full font-mono text-[16px] text-[#1C202B] bg-[#F9F6F0] rounded-xl px-3 py-2 border border-[#EBE3D3] focus:outline-none"

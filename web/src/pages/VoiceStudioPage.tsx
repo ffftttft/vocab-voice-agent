@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
+import { LangTogglePill } from '../components/ShellComponents'
 import { useRealtimeVoice } from '../hooks/useRealtimeVoice'
 import { useSSEHint } from '../hooks/useSSEHint'
 import { api } from '../lib/api'
@@ -10,6 +11,7 @@ import { useAppStore } from '../store/useAppStore'
 export default function VoiceStudioPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
   const navigate = useAppStore((s) => s.navigate)
+  const lang = useAppStore((s) => s.lang)
   const plan = useAppStore((s) => s.plan)
   const cards = useAppStore((s) => s.cards)
   const words = useAppStore((s) => s.words)
@@ -36,6 +38,8 @@ export default function VoiceStudioPage() {
 
   const [elapsedSec, setElapsedSec] = useState(0)
   const [recastCountdown, setRecastCountdown] = useState(5)
+
+  const isZh = lang === 'zh'
 
   useEffect(() => {
     if (
@@ -117,20 +121,23 @@ export default function VoiceStudioPage() {
         <div className="px-5 pt-2 pb-2 flex justify-between items-end">
           <div>
             <span className="font-body text-[11px] font-bold uppercase tracking-wider text-[#8C857B]">
-              Live Scenario Brief
+              {isZh ? '实时口语演练简报' : 'Live Scenario Brief'}
             </span>
             <h1 className="font-headline font-medium text-[34px] leading-tight text-[#1C202B] tracking-tight">
-              Voice Studio
+              {isZh ? '口语工作台' : 'Voice Studio'}
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('14-engine-router')}
-            className="flex items-center gap-1.5 bg-[#E6F5EC] border border-[#C3E6D0] text-[#2E7D4E] font-mono text-[11px] font-semibold px-2.5 py-1.5 rounded-full mb-1 press-scale"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2E7D4E] animate-pulse" />
-            <span>16k/24k PCM Ready</span>
-          </button>
+          <div className="flex items-center gap-1.5 mb-1">
+            <LangTogglePill />
+            <button
+              type="button"
+              onClick={() => navigate('14-engine-router')}
+              className="flex items-center gap-1.5 bg-[#E6F5EC] border border-[#C3E6D0] text-[#2E7D4E] font-mono text-[11px] font-semibold px-2.5 py-1.5 rounded-full press-scale"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2E7D4E] animate-pulse" />
+              <span>{isZh ? '语音就绪' : 'PCM Ready'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Main Content Canvas */}
@@ -154,10 +161,10 @@ export default function VoiceStudioPage() {
                 </div>
                 <div>
                   <span className="font-body font-bold text-xs text-[#1C202B] block">
-                    Pip · Speaking Companion
+                    {isZh ? 'Pip · 口语陪练搭档' : 'Pip · Speaking Companion'}
                   </span>
                   <span className="font-body text-[10px] text-[#8C857B]">
-                    Full-Duplex Voice Session
+                    {isZh ? '全双工实时语音对话' : 'Full-Duplex Voice Session'}
                   </span>
                 </div>
               </div>
@@ -168,7 +175,9 @@ export default function VoiceStudioPage() {
                   onClick={cyclePersona}
                   className="bg-white border border-[#E3D7C2] px-2.5 py-1.5 min-h-[36px] rounded-full text-[11px] font-semibold text-[#1C202B] flex items-center gap-1 press-scale shadow-2xs"
                 >
-                  <span>Voice: {voicePersona}</span>
+                  <span>
+                    {isZh ? `音色: ${voicePersona}` : `Voice: ${voicePersona}`}
+                  </span>
                   <span className="material-symbols-outlined text-[13px] text-[#5A554C]">
                     expand_more
                   </span>
@@ -178,13 +187,16 @@ export default function VoiceStudioPage() {
 
             {/* Scenario Title */}
             <h2 className="font-headline font-semibold text-[22px] leading-snug text-[#1C202B] mt-3.5 tracking-tight">
-              {plan?.scenario_title || 'Daily Spoken English Roleplay'}
+              {plan?.scenario_title ||
+                (isZh ? '每日英语情景实战对话' : 'Daily Spoken English Roleplay')}
             </h2>
 
             {/* Scenario Opening Brief */}
             <p className="font-body text-[13.5px] leading-relaxed text-[#5A554C] mt-2">
               {plan?.scenario_brief ||
-                '点击下方按钮启动实时全双工语音对话。Pip 会先开口打招呼，并引导你在自然对话中用出今日目标词；卡壳时可随时点击提示示例回答。'}
+                (isZh
+                  ? '点击下方按钮启动实时全双工语音对话。Pip 会先开口打招呼，并引导你在自然对话中用出今日目标词；卡壳时可随时点击提示查看地道示例回答。'
+                  : 'Tap below to launch a live full-duplex voice session. Pip greets you first and guides you to weave today’s target words into natural conversation.')}
             </p>
 
             {/* 3-Stage Conversation Rhythm Strip */}
@@ -192,19 +204,21 @@ export default function VoiceStudioPage() {
               <div className="flex items-center justify-between gap-1 text-[11px] font-medium text-[#7A7366]">
                 <div className="flex-1 text-center py-1.5 px-1 rounded-xl bg-[#E6DEC8]/60 border border-[#DDD3BC]">
                   <span className="block text-[10px] uppercase font-bold text-[#8C857B]">
-                    Step 1
+                    {isZh ? '阶段 1' : 'Step 1'}
                   </span>
-                  <span className="font-semibold text-[#5A554C] truncate block">Warmup</span>
+                  <span className="font-semibold text-[#5A554C] truncate block">
+                    {isZh ? '破冰开场' : 'Warmup'}
+                  </span>
                 </div>
                 <span className="material-symbols-outlined text-[12px] text-[#B0A798]">
                   chevron_right
                 </span>
                 <div className="flex-[1.3] text-center py-1.5 px-1 rounded-xl bg-white border border-[#DDD3BC] shadow-xs">
                   <span className="block text-[10px] uppercase font-bold text-[#6A9AE2]">
-                    Step 2
+                    {isZh ? '阶段 2' : 'Step 2'}
                   </span>
                   <span className="font-semibold text-[#1C202B] truncate block">
-                    Sliding Window
+                    {isZh ? '滑窗目标词实战' : 'Sliding Window'}
                   </span>
                 </div>
                 <span className="material-symbols-outlined text-[12px] text-[#B0A798]">
@@ -212,9 +226,11 @@ export default function VoiceStudioPage() {
                 </span>
                 <div className="flex-1 text-center py-1.5 px-1 rounded-xl bg-[#E6DEC8]/60 border border-[#DDD3BC]">
                   <span className="block text-[10px] uppercase font-bold text-[#8C857B]">
-                    Step 3
+                    {isZh ? '阶段 3' : 'Step 3'}
                   </span>
-                  <span className="font-semibold text-[#5A554C] truncate block">Compaction</span>
+                  <span className="font-semibold text-[#5A554C] truncate block">
+                    {isZh ? '复盘沉淀' : 'Compaction'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -224,24 +240,30 @@ export default function VoiceStudioPage() {
           <section className="bg-white border border-[#EBE5D8] rounded-[26px] p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-body text-[#1C202B] font-bold text-[15px] tracking-tight">
-                Active Target Window ({windowTiles.length} Words)
+                {isZh
+                  ? `当前活跃目标词窗口（${windowTiles.length} 词）`
+                  : `Active Target Window (${windowTiles.length} Words)`}
               </h3>
               <span className="bg-[#EBF2FC] text-[#3C6FB5] border border-[#D1E1FA] text-[10.5px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#6A9AE2]" />
-                Auto-rotates in dialogue
+                {isZh ? '随对话自动轮换' : 'Auto-rotates in dialogue'}
               </span>
             </div>
             <p className="font-body text-[#736E65] text-[12px] mt-1 leading-normal">
-              在对话中主动说出目标词（无需点击提示），系统自动判定并给予 FSRS 记忆加成。
+              {isZh
+                ? '在对话中主动说出目标词（无需点击提示），系统会自动判定并给予 FSRS 记忆加成。'
+                : 'Use target words proactively without hints to earn an automatic FSRS stability boost.'}
             </p>
 
             {windowTiles.length === 0 ? (
               <div className="mt-3.5 bg-[#F9F6F0] rounded-2xl p-4 border border-[#EDE7DC] text-center space-y-2">
                 <p className="font-headline italic text-[15px] text-[#1C202B]">
-                  今日暂未分配口语目标词
+                  {isZh ? '今日暂未分配口语目标词' : 'No voice target words assigned yet'}
                 </p>
                 <p className="text-xs text-[#8C857B]">
-                  可先导入词书并生成今日计划，或直接点击下方按钮开始自由英语对话。
+                  {isZh
+                    ? '可先导入词书并生成今日计划，或直接点击下方按钮开始自由英语对话。'
+                    : 'Import a wordbook and generate a daily plan, or tap below to start free conversation.'}
                 </p>
               </div>
             ) : (
@@ -276,7 +298,7 @@ export default function VoiceStudioPage() {
                     <div className="mt-2 pt-1.5 border-t border-[#EFECE4] flex items-center justify-between w-full">
                       <span className="bg-[#E6F5EC] text-[#2E7D4E] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
                         <span className="material-symbols-outlined text-[10px]">bolt</span>
-                        Target
+                        {isZh ? '目标词' : 'Target'}
                       </span>
                       <span className="material-symbols-outlined text-[14px] text-[#A69E90]">
                         volume_up
@@ -297,7 +319,9 @@ export default function VoiceStudioPage() {
                 <div className="flex items-center justify-between">
                   <span className="truncate pr-2">
                     <strong className="font-bold text-[#1C202B]">
-                      +{extraQueuedCards.length} more queued:
+                      {isZh
+                        ? `+${extraQueuedCards.length} 个后续候补词：`
+                        : `+${extraQueuedCards.length} more queued:`}
                     </strong>{' '}
                     {extraQueuedCards
                       .slice(0, 4)
@@ -305,7 +329,7 @@ export default function VoiceStudioPage() {
                       .join(', ')}
                   </span>
                   <span className="shrink-0 flex items-center text-[12px]">
-                    View all {poolCards.length}{' '}
+                    {isZh ? `全部 ${poolCards.length}` : `View all ${poolCards.length}`}{' '}
                     <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                   </span>
                 </div>
@@ -325,11 +349,13 @@ export default function VoiceStudioPage() {
               className="w-full h-14 rounded-full bg-[#1C202B] text-white font-body font-semibold text-[15px] shadow-xl press-scale flex items-center justify-center gap-2 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px] text-[#EFE6D5]">mic</span>
-              <span>Start Live Voice Session</span>
+              <span>{isZh ? '开启实时语音对话' : 'Start Live Voice Session'}</span>
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
             <p className="font-body text-[11px] text-center text-[#8C857B] mt-2 px-3 leading-normal">
-              Full-duplex WebSocket PCM audio · Non-blocking mistake cards &amp; on-demand SSE hints
+              {isZh
+                ? '全双工实时音频流 · 不打断对话的轻量纠错卡与按需提示'
+                : 'Full-duplex WebSocket PCM audio · Non-blocking mistake cards & on-demand SSE hints'}
             </p>
           </div>
         </div>
@@ -358,16 +384,19 @@ export default function VoiceStudioPage() {
           <div className="flex justify-between items-center px-6 py-2">
             <span className="font-mono text-[10px] uppercase tracking-widest text-[#8C857B] font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C] animate-pulse" />
-              Live Session · Wrap
+              {isZh ? '语音练习 · 本轮小结' : 'Live Session · Wrap'}
             </span>
-            <button
-              type="button"
-              aria-label="Dismiss recap"
-              onClick={() => navigate('12-memory-journal')}
-              className="w-11 h-11 rounded-full bg-[#EFECE4] press-scale flex items-center justify-center text-[#1C202B] shadow-sm cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">close</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <LangTogglePill />
+              <button
+                type="button"
+                aria-label={isZh ? '关闭总结' : 'Dismiss recap'}
+                onClick={() => navigate('12-memory-journal')}
+                className="w-10 h-10 rounded-full bg-[#EFECE4] press-scale flex items-center justify-center text-[#1C202B] shadow-sm cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -390,17 +419,27 @@ export default function VoiceStudioPage() {
             </motion.div>
 
             <div className="bg-[#FFF4D6] text-[#946300] font-semibold text-xs px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5 shadow-sm border border-[#FDE8B5]/60 mb-2.5">
-              <span>🎉 Voice Session Completed · {formatClock(activeCallSec)}</span>
+              <span>
+                {isZh
+                  ? `🎉 语音练习已完成 · ${formatClock(activeCallSec)}`
+                  : `🎉 Voice Session Completed · ${formatClock(activeCallSec)}`}
+              </span>
             </div>
 
             <h1 className="font-headline font-bold text-[26px] leading-tight text-[#1C202B] tracking-tight px-1">
               {completedList.length > 0
-                ? `Activated ${completedList.length} Target Words`
-                : 'Voice Practice Session Summary'}
+                ? isZh
+                  ? `本轮成功激活 ${completedList.length} 个目标词`
+                  : `Activated ${completedList.length} Target Words`
+                : isZh
+                  ? '本轮口语练习总结'
+                  : 'Voice Practice Session Summary'}
             </h1>
 
             <p className="font-body text-xs text-[#5A554C] mt-2 max-w-[320px] leading-relaxed">
-              本次语音练习的词汇激活状态与纠错记录已同步至本地学习档案。
+              {isZh
+                ? '本次语音练习的词汇激活状态与纠错记录已同步至本地学习档案。'
+                : 'Your vocabulary activation status and spoken recasts have been synced to your journal.'}
             </p>
           </section>
 
@@ -410,42 +449,44 @@ export default function VoiceStudioPage() {
               <div className="px-1.5 flex flex-col items-center justify-between">
                 <div>
                   <span className="font-headline font-bold text-[22px] leading-none text-[#236B42] block">
-                    {completedList.length} Words
+                    {isZh ? `${completedList.length} 词` : `${completedList.length} Words`}
                   </span>
                   <span className="text-[11px] font-medium text-[#5A554C] mt-1 block tracking-tight">
-                    Used Proactively
+                    {isZh ? '主动说出' : 'Used Proactively'}
                   </span>
                 </div>
                 <span className="bg-[#E6F5EC] text-[#1E7E44] text-[10px] font-semibold px-2 py-0.5 rounded-full mt-2 inline-block border border-[#CDE9D7]">
-                  FSRS Boost
+                  {isZh ? '记忆加成' : 'FSRS Boost'}
                 </span>
               </div>
 
               <div className="px-1.5 flex flex-col items-center justify-between">
                 <div>
                   <span className="font-headline font-bold text-[22px] leading-none text-[#946300] block">
-                    {hintAssistedWords.length} Words
+                    {isZh
+                      ? `${hintAssistedWords.length} 词`
+                      : `${hintAssistedWords.length} Words`}
                   </span>
                   <span className="text-[11px] font-medium text-[#5A554C] mt-1 block tracking-tight">
-                    Used with Hint
+                    {isZh ? '提示辅助' : 'Used with Hint'}
                   </span>
                 </div>
                 <span className="bg-[#FFF4D6] text-[#A66E00] text-[10px] font-semibold px-2 py-0.5 rounded-full mt-2 inline-block border border-[#FBE7A8]">
-                  Practiced
+                  {isZh ? '已演练' : 'Practiced'}
                 </span>
               </div>
 
               <div className="px-1.5 flex flex-col items-center justify-between">
                 <div>
                   <span className="font-headline font-bold text-[22px] leading-none text-[#A83825] block">
-                    {liveMistakes.length} Items
+                    {isZh ? `${liveMistakes.length} 条` : `${liveMistakes.length} Items`}
                   </span>
                   <span className="text-[11px] font-medium text-[#5A554C] mt-1 block tracking-tight">
-                    Saved to Clinic
+                    {isZh ? '收入诊所' : 'Saved to Clinic'}
                   </span>
                 </div>
                 <span className="bg-[#FCECE8] text-[#C0392B] text-[10px] font-semibold px-2 py-0.5 rounded-full mt-2 inline-block border border-[#F6D2CB]">
-                  Recasts
+                  {isZh ? '纠错记录' : 'Recasts'}
                 </span>
               </div>
             </div>
@@ -459,17 +500,21 @@ export default function VoiceStudioPage() {
                   local_florist
                 </span>
                 <h2 className="font-headline italic font-medium text-base text-[#1C202B]">
-                  Word Activation Breakdown
+                  {isZh ? '目标词激活明细' : 'Word Activation Breakdown'}
                 </h2>
               </div>
               <span className="font-mono text-[10px] text-[#8C857B] font-semibold">
-                {completedList.length + hintAssistedWords.length} Logged
+                {isZh
+                  ? `已记录 ${completedList.length + hintAssistedWords.length} 词`
+                  : `${completedList.length + hintAssistedWords.length} Logged`}
               </span>
             </div>
 
             {completedList.length === 0 && hintAssistedWords.length === 0 ? (
               <p className="text-xs text-[#5A554C] leading-relaxed">
-                本次通话暂未触发目标词命中记录。生成今日计划并在对话中主动说出目标词后，将在此展示激活明细。
+                {isZh
+                  ? '本次通话暂未触发目标词命中记录。生成今日计划并在对话中主动说出目标词后，将在此展示激活明细。'
+                  : 'No target words were triggered in this call. Generate a daily plan and use target words during your conversation to see activation details here.'}
               </p>
             ) : (
               <>
@@ -477,7 +522,9 @@ export default function VoiceStudioPage() {
                   <div className="mb-3">
                     <div className="text-[10px] font-mono tracking-wider text-[#2D5A3C] font-semibold flex items-center gap-1.5 mb-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#58B37C]" />
-                      PROACTIVE USE → FSRS STABILITY BOOSTED
+                      {isZh
+                        ? '主动运用 → FSRS 记忆稳定度提升'
+                        : 'PROACTIVE USE → FSRS STABILITY BOOSTED'}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {completedList.map((w) => (
@@ -498,7 +545,7 @@ export default function VoiceStudioPage() {
                   <div>
                     <div className="text-[10px] font-mono tracking-wider text-[#8A5A00] font-semibold flex items-center gap-1.5 mb-2 mt-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#F4B844]" />
-                      USED AFTER SSE HINT
+                      {isZh ? '查看提示后运用' : 'USED AFTER SSE HINT'}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {hintAssistedWords.map((w) => (
@@ -526,7 +573,7 @@ export default function VoiceStudioPage() {
                   auto_awesome
                 </span>
                 <h2 className="font-headline font-bold text-base text-[#1C202B]">
-                  Markdown Memory Snapshot
+                  {isZh ? 'Markdown 记忆档案快照' : 'Markdown Memory Snapshot'}
                 </h2>
               </div>
             </div>
@@ -539,7 +586,12 @@ export default function VoiceStudioPage() {
                 <span>user_profile.md</span>
               </div>
               <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#EDE7DD] text-xs italic font-headline text-[#4A4742] leading-relaxed">
-                “{profileLines[0]?.replace(/^-\s*/, '') || '点击下方按钮查看或编辑 user_profile.md'}”
+                “
+                {profileLines[0]?.replace(/^-\s*/, '') ||
+                  (isZh
+                    ? '点击下方按钮查看或编辑 user_profile.md'
+                    : 'Tap below to inspect or edit user_profile.md')}
+                ”
               </div>
             </div>
 
@@ -551,7 +603,12 @@ export default function VoiceStudioPage() {
                 <span>error_patterns.md</span>
               </div>
               <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#EDE7DD] text-xs italic font-headline text-[#4A4742] leading-relaxed">
-                “{errorLines[0]?.replace(/^-\s*/, '') || '暂无顽疾记录，完成语音整理后将自动归档'}”
+                “
+                {errorLines[0]?.replace(/^-\s*/, '') ||
+                  (isZh
+                    ? '暂无顽疾记录，完成语音整理后将自动归档'
+                    : 'No recurring patterns logged yet; auto-archived after compaction')}
+                ”
               </div>
             </div>
           </section>
@@ -566,14 +623,14 @@ export default function VoiceStudioPage() {
               className="bg-[#EFECE4] text-[#1C202B] font-semibold text-xs py-3.5 px-3 min-h-[48px] rounded-full flex-1 text-center press-scale flex items-center justify-center gap-1 shadow-sm border border-[#E2DDD3]"
             >
               <span className="material-symbols-outlined text-[15px]">data_object</span>
-              <span>Inspect Memory (.md)</span>
+              <span>{isZh ? '查看记忆文件 (.md)' : 'Inspect Memory (.md)'}</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('12-memory-journal')}
               className="bg-[#1C202B] text-white font-semibold text-xs py-3.5 px-4 min-h-[48px] rounded-full flex-[1.4] text-center shadow-md press-scale flex items-center justify-center gap-1.5"
             >
-              <span>Done · Return to Journal</span>
+              <span>{isZh ? '完成 · 返回记忆页' : 'Done · Return to Journal'}</span>
               <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
             </button>
           </div>
@@ -596,7 +653,9 @@ export default function VoiceStudioPage() {
             word: w,
             def: found?.pos_defs?.[0]
               ? `${found.pos_defs[0].pos ?? ''} ${found.pos_defs[0].def ?? ''}`.trim()
-              : 'Target Word',
+              : isZh
+                ? '目标词汇'
+                : 'Target Word',
             done: completedList.some((cw) => cw.toLowerCase() === w.toLowerCase()),
           }
         })
@@ -614,7 +673,7 @@ export default function VoiceStudioPage() {
     <div className="h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-between overflow-hidden sprint-shell bg-gradient-to-b from-[#DBD6F5] via-[#F5E2D4] via-40% to-[#F9F6F0] to-85% text-[#1C202B] relative select-none">
       {/* Top Live Header Area */}
       <div className="w-full shrink-0 z-20 pt-1">
-        <div className="flex items-center justify-between gap-1.5 px-5 mt-1">
+        <div className="flex items-center justify-between gap-1.5 px-4 mt-1">
           {/* Left Pill: Stage & JetBrains Mono Timer */}
           <div className="flex items-center gap-1.5 bg-white/85 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/60 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
@@ -637,23 +696,28 @@ export default function VoiceStudioPage() {
               wb_sunny
             </span>
             <span className="font-body text-[11px] font-bold tracking-tight tabular-nums">
-              {completedList.length}/{totalTargetCount} Bloomed
+              {isZh
+                ? `${completedList.length}/${totalTargetCount} 已激活`
+                : `${completedList.length}/${totalTargetCount} Bloomed`}
             </span>
           </button>
 
-          {/* Right Pill: Recasts logged */}
-          <button
-            type="button"
-            onClick={() =>
-              navigate(isRecastScreen ? '08-voice-call-active' : '09-voice-call-recast')
-            }
-            className="flex items-center gap-1 bg-[#FCECE8]/90 backdrop-blur-md text-[#C74834] px-2.5 py-1.5 rounded-full border border-[#E5735D]/30 shadow-sm press-scale"
-          >
-            <span className="material-symbols-outlined text-[12px]">spellcheck</span>
-            <span className="font-body text-[11px] font-semibold tabular-nums">
-              {liveMistakes.length} Recasts
-            </span>
-          </button>
+          {/* Right Pill: Recasts logged + Lang toggle */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() =>
+                navigate(isRecastScreen ? '08-voice-call-active' : '09-voice-call-recast')
+              }
+              className="flex items-center gap-1 bg-[#FCECE8]/90 backdrop-blur-md text-[#C74834] px-2.5 py-1.5 rounded-full border border-[#E5735D]/30 shadow-sm press-scale"
+            >
+              <span className="material-symbols-outlined text-[12px]">spellcheck</span>
+              <span className="font-body text-[11px] font-semibold tabular-nums">
+                {isZh ? `${liveMistakes.length} 纠错` : `${liveMistakes.length} Recasts`}
+              </span>
+            </button>
+            <LangTogglePill />
+          </div>
         </div>
       </div>
 
@@ -670,14 +734,16 @@ export default function VoiceStudioPage() {
             >
               <div className="flex items-center justify-between mt-0.5 mb-2">
                 <span className="bg-[#FCECE8] text-[#A83825] font-mono text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full uppercase">
-                  {latestMistake?.category || 'LINGUISTIC RECAST'}
+                  {latestMistake?.category || (isZh ? '口语轻量纠错' : 'LINGUISTIC RECAST')}
                 </span>
                 <button
                   type="button"
                   onClick={() => navigate('08-voice-call-active')}
                   className="text-[11px] text-[#8C857B] flex items-center gap-1 font-medium press-scale"
                 >
-                  Auto-saves to Clinic ({recastCountdown}s)
+                  {isZh
+                    ? `自动收入错题诊所 (${recastCountdown}秒)`
+                    : `Auto-saves to Clinic (${recastCountdown}s)`}
                   <span className="material-symbols-outlined text-[14px] text-stone-400">
                     close
                   </span>
@@ -688,14 +754,18 @@ export default function VoiceStudioPage() {
                 <div className="space-y-1.5">
                   <div className="bg-red-50/70 border border-red-100/80 rounded-xl px-2.5 py-1.5">
                     <p className="text-xs text-stone-700 leading-snug">
-                      <span className="text-stone-500 font-medium">You said: </span>
+                      <span className="text-stone-500 font-medium">
+                        {isZh ? '原句：' : 'You said: '}
+                      </span>
                       &ldquo;{latestMistake.user_said}&rdquo;
                     </p>
                   </div>
 
                   <div className="bg-amber-50/80 border border-amber-200/70 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-2">
                     <div className="text-xs text-[#1C202B] leading-tight">
-                      <span className="text-amber-800 font-semibold">Suggested: </span>
+                      <span className="text-amber-800 font-semibold">
+                        {isZh ? '地道表达：' : 'Suggested: '}
+                      </span>
                       <span className="font-bold text-[#1C202B]">{latestMistake.suggested}</span>
                       {latestMistake.tip_zh && (
                         <span className="block text-[10px] text-amber-900/80 font-medium mt-0.5">
@@ -711,13 +781,15 @@ export default function VoiceStudioPage() {
                       <span className="material-symbols-outlined text-[14px] text-amber-700 fill-icon">
                         volume_up
                       </span>
-                      <span>Demo</span>
+                      <span>{isZh ? '朗读' : 'Demo'}</span>
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="bg-[#F9F6F0] border border-[#EBE4D8] rounded-xl px-3 py-3 text-xs text-[#5A554C] leading-relaxed">
-                  当前通话暂未产生发音或语法纠错记录。当你在实时对话中出现发音重音、时态或选词偏差时，系统会在此处非阻塞浮现修正提示并自动归档至错题诊所。
+                  {isZh
+                    ? '当前通话暂未产生发音或语法纠错记录。当你在实时对话中出现发音重音、时态或选词偏差时，系统会在此处非阻塞浮现修正提示并自动归档至错题诊所。'
+                    : 'No spoken mistakes logged in this call yet. Non-blocking recast suggestions appear here automatically when pronunciation or grammar slips occur.'}
                 </div>
               )}
             </motion.section>
@@ -726,13 +798,17 @@ export default function VoiceStudioPage() {
             <section className="shrink-0">
               <div className="flex items-center justify-between mb-1 px-0.5">
                 <span className="font-mono text-[10px] text-stone-500 uppercase tracking-wider font-semibold">
-                  ACTIVE TARGET WINDOW ({activeWindowWords.length})
+                  {isZh
+                    ? `当前目标词滑窗 (${activeWindowWords.length})`
+                    : `ACTIVE TARGET WINDOW (${activeWindowWords.length})`}
                 </span>
-                <span className="text-[10px] text-stone-400 font-medium">Sliding Context</span>
+                <span className="text-[10px] text-stone-400 font-medium">
+                  {isZh ? '随对话自动轮换' : 'Sliding Context'}
+                </span>
               </div>
               {activeWindowWords.length === 0 ? (
                 <div className="bg-white/80 border border-[#EBE4D8] rounded-xl p-2.5 text-center text-xs text-[#8C857B]">
-                  暂无活跃窗口目标词
+                  {isZh ? '暂无活跃窗口目标词' : 'No active target words in window'}
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-1.5">
@@ -778,12 +854,14 @@ export default function VoiceStudioPage() {
                     </span>
                   </div>
                   <span className="bg-[#E5DEC7] text-stone-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#D8CEB4]">
-                    Non-Blocking Recast Mode
+                    {isZh ? '不打断轻量纠错' : 'Non-Blocking Recast Mode'}
                   </span>
                 </div>
                 <p className="font-headline italic text-[14px] text-[#1C202B] leading-snug font-normal">
                   {voiceCall.transcripts.filter((t) => t.role === 'assistant').slice(-1)[0]?.text ||
-                    '纠错卡片仅在顶部短暂浮现 5 秒，绝不打断你的实时口语表达流。'}
+                    (isZh
+                      ? '纠错卡片仅在顶部短暂浮现 5 秒，绝不打断你的实时口语表达流。'
+                      : 'Recast cards float at the top for 5 seconds without interrupting your speaking flow.')}
                 </p>
               </div>
             </section>
@@ -795,20 +873,30 @@ export default function VoiceStudioPage() {
             <section className="bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-sm border border-[#EBE4D8]/80 shrink-0">
               <div className="flex items-center justify-between gap-1 mb-2">
                 <span className="font-mono text-[9px] uppercase tracking-wider text-[#1C202B]/60 font-semibold">
-                  Active Target Window ({activeWindowWords.length})
+                  {isZh
+                    ? `当前目标词窗口 (${activeWindowWords.length})`
+                    : `Active Target Window (${activeWindowWords.length})`}
                 </span>
                 <span className="text-[10px] font-mono text-[#5A554C]">
                   {voiceCall.status === 'live'
-                    ? 'WebSocket Connected'
+                    ? isZh
+                      ? '实时语音已连接'
+                      : 'WebSocket Connected'
                     : voiceCall.status === 'connecting'
-                      ? 'Connecting...'
-                      : 'Ready'}
+                      ? isZh
+                        ? '正在连接…'
+                        : 'Connecting...'
+                      : isZh
+                        ? '已就绪'
+                        : 'Ready'}
                 </span>
               </div>
 
               {activeWindowWords.length === 0 ? (
                 <div className="bg-[#FAF7F2] border border-[#EAE4D7] rounded-2xl p-3 text-center text-xs text-[#8C857B]">
-                  自由英语口语对话模式（今日未指定目标词窗口）
+                  {isZh
+                    ? '自由英语口语对话模式（今日未指定目标词窗口）'
+                    : 'Free conversation mode (no target word window assigned)'}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
@@ -829,7 +917,7 @@ export default function VoiceStudioPage() {
                         </span>
                         {item.done ? (
                           <span className="text-[9px] font-mono bg-[#236B42] text-white px-1.5 py-0.5 rounded-full leading-none font-semibold">
-                            ✦ Used
+                            {isZh ? '✦ 已用' : '✦ Used'}
                           </span>
                         ) : (
                           <span className="material-symbols-outlined text-[12px] text-[#1C202B]/40">
@@ -868,8 +956,12 @@ export default function VoiceStudioPage() {
                   {voiceCall.error
                     ? voiceCall.error
                     : isMuted
-                      ? 'Microphone Muted · Tap Mic to Resume'
-                      : 'Full-duplex 24kHz PCM · VAD Ready'}
+                      ? isZh
+                        ? '麦克风已静音 · 点击左下角恢复'
+                        : 'Microphone Muted · Tap Mic to Resume'
+                      : isZh
+                        ? '全双工 24kHz 实时音频 · 正在聆听'
+                        : 'Full-duplex 24kHz PCM · VAD Ready'}
                 </span>
               </div>
             </section>
@@ -895,10 +987,10 @@ export default function VoiceStudioPage() {
                               : 'bg-[#EFECE4] text-[#1C202B] font-body'
                           }`}
                         >
-                          {line.role === 'assistant' ? 'P' : 'You'}
+                          {line.role === 'assistant' ? 'P' : isZh ? '我' : 'You'}
                         </span>
                         <span className="font-body font-bold text-xs text-[#1C202B]">
-                          {line.role === 'assistant' ? 'Pip' : 'You'}
+                          {line.role === 'assistant' ? 'Pip' : isZh ? '你' : 'You'}
                         </span>
                       </div>
                     </div>
@@ -919,10 +1011,14 @@ export default function VoiceStudioPage() {
                   </div>
                   <p className="font-headline text-[14px] leading-snug text-[#1C202B] italic">
                     {voiceCall.error
-                      ? `“连接提示：${voiceCall.error}”`
+                      ? isZh
+                        ? `“连接提示：${voiceCall.error}”`
+                        : `“Connection note: ${voiceCall.error}”`
                       : plan?.scenario_brief
                         ? `“${plan.scenario_brief}”`
-                        : '“实时语音通道已准备就绪，请直接开口用英语交流；需要表达灵感时可点击下方 Hint Example Answer。”'}
+                        : isZh
+                          ? '“实时语音通道已准备就绪，请直接开口用英语交流；需要表达灵感时可点击下方「提示示范回答」。”'
+                          : '“Live voice channel is ready—speak freely in English, or tap Hint Example Answer below whenever you want phrasing ideas.”'}
                   </p>
                 </article>
               )}
@@ -936,7 +1032,7 @@ export default function VoiceStudioPage() {
         {/* Left: Round Mute Toggle Button */}
         <button
           type="button"
-          aria-label="Mute Microphone"
+          aria-label={isZh ? '静音麦克风' : 'Mute Microphone'}
           onClick={() => {
             voiceCall.toggleMute()
             toggleMicMute()
@@ -955,7 +1051,7 @@ export default function VoiceStudioPage() {
         {/* Center: Deep Obsidian Ink Prominent CTA Button */}
         <button
           type="button"
-          aria-label="Request Hint Example Answer"
+          aria-label={isZh ? '获取提示示范回答' : 'Request Hint Example Answer'}
           onClick={() => {
             if (voiceCall.sessionId) {
               void requestSseHint(voiceCall.sessionId)
@@ -969,13 +1065,13 @@ export default function VoiceStudioPage() {
           <span className="material-symbols-outlined text-[#F4B844] text-[18px] fill-icon">
             auto_awesome
           </span>
-          <span>Hint Example Answer</span>
+          <span>{isZh ? '提示示范回答' : 'Hint Example Answer'}</span>
         </button>
 
         {/* Right: Round Terracotta Coral End Call Button */}
         <button
           type="button"
-          aria-label="End Voice Session"
+          aria-label={isZh ? '结束语音通话' : 'End Voice Session'}
           onClick={async () => {
             await voiceCall.hangUp()
             await completeLiveVoiceSession()
@@ -1001,7 +1097,7 @@ export default function VoiceStudioPage() {
             />
             <motion.section
               role="dialog"
-              aria-label="On-Demand SSE Hint Drawer"
+              aria-label={isZh ? '按需提示抽屉' : 'On-Demand SSE Hint Drawer'}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -1025,7 +1121,7 @@ export default function VoiceStudioPage() {
                     <span className="material-symbols-outlined text-[13px] text-[#946300] fill-icon">
                       lightbulb
                     </span>
-                    On-Demand SSE Hint
+                    {isZh ? '实时口语提示' : 'On-Demand SSE Hint'}
                   </span>
                 </div>
 
@@ -1042,7 +1138,13 @@ export default function VoiceStudioPage() {
                     <span className="w-[2.5px] h-3 bg-white rounded-full wave-bar-gpu-4" />
                   </div>
                   <span className="font-body font-semibold text-[11px] tracking-tight">
-                    {playingHintDemo ? 'Playing...' : 'Listen Demo'}
+                    {playingHintDemo
+                      ? isZh
+                        ? '正在播放…'
+                        : 'Playing...'
+                      : isZh
+                        ? '听示范发音'
+                        : 'Listen Demo'}
                   </span>
                 </button>
               </div>
@@ -1055,7 +1157,9 @@ export default function VoiceStudioPage() {
                   </span>
                 </div>
                 <p className="text-[10.5px] leading-tight text-[#2B579A] font-medium">
-                  播放 TTS 示范音频期间自动静音麦克风，防止扬声器回声误触发服务端 VAD 打断。
+                  {isZh
+                    ? '播放示范音频期间自动静音麦克风，防止扬声器回声误触发服务端语音打断。'
+                    : 'Automatically mutes microphone during TTS playback to prevent speaker echo from triggering server VAD.'}
                 </p>
               </div>
 
@@ -1066,7 +1170,7 @@ export default function VoiceStudioPage() {
                     <span className="material-symbols-outlined text-[13px] text-[#946300]">
                       auto_awesome
                     </span>
-                    EN · Example Response
+                    {isZh ? '英文 · 第一人称示范回答' : 'EN · Example Response'}
                   </span>
                 </div>
                 {effectiveHintStreaming ? (
@@ -1095,8 +1199,12 @@ export default function VoiceStudioPage() {
                   <p className="font-body text-xs text-[#5A554C]">
                     {sseHint.error ||
                       (words.length === 0
-                        ? '请先导入词书并开启实时语音会话，即可在通话中按需流式生成包含目标词的第一人称示例回答。'
-                        : '点击下方 New Angle 生成包含当前目标词的示例句。')}
+                        ? isZh
+                          ? '请先导入词书并开启实时语音会话，即可在通话中按需流式生成包含目标词的第一人称示例回答。'
+                          : 'Import a wordbook and start a live voice session to stream first-person example answers on demand.'
+                        : isZh
+                          ? '点击下方「换个角度」生成包含当前目标词的示例句。'
+                          : 'Tap New Angle below to generate an example sentence with your target words.')}
                   </p>
                 )}
               </div>
@@ -1108,7 +1216,7 @@ export default function VoiceStudioPage() {
                     <span className="material-symbols-outlined text-[13px] text-[#8B8375]">
                       translate
                     </span>
-                    ZH · 对应中文语境释义
+                    {isZh ? '中文 · 对应语境释义' : 'ZH · Contextual Meaning'}
                   </div>
                   <p className="font-body text-[12px] text-[#4A453C] leading-relaxed">
                     {effectiveHintZh}
@@ -1122,8 +1230,18 @@ export default function VoiceStudioPage() {
                   verified_user
                 </span>
                 <span className="text-[10px] text-[#8A8172] font-medium leading-none">
-                  Marked as Hint-Assisted (
-                  <code className="font-mono text-[9.5px] text-[#696154]">USED_WITH_HINT</code>)
+                  {isZh ? (
+                    <>
+                      使用提示后记为辅助运用（
+                      <code className="font-mono text-[9.5px] text-[#696154]">USED_WITH_HINT</code>
+                      ）
+                    </>
+                  ) : (
+                    <>
+                      Marked as Hint-Assisted (
+                      <code className="font-mono text-[9.5px] text-[#696154]">USED_WITH_HINT</code>)
+                    </>
+                  )}
                 </span>
               </div>
 
@@ -1141,12 +1259,14 @@ export default function VoiceStudioPage() {
                   className="bg-[#EFECE4] text-[#524B40] font-body font-semibold text-xs py-3 px-4 min-h-[46px] rounded-full flex items-center justify-center gap-1.5 press-scale border border-[#E0D9CB]"
                 >
                   <span className="material-symbols-outlined text-[16px]">cached</span>
-                  New Angle
+                  {isZh ? '换个角度' : 'New Angle'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    toast.success('Mic Ready · Continue speaking')
+                    toast.success(
+                      isZh ? '麦克风已就绪 · 请继续开口' : 'Mic Ready · Continue speaking',
+                    )
                     navigate('08-voice-call-active')
                   }}
                   className="flex-1 bg-[#1C202B] text-white font-body font-semibold text-xs py-3.5 px-4 min-h-[46px] rounded-full flex items-center justify-center gap-2 shadow-md press-scale"
@@ -1154,7 +1274,7 @@ export default function VoiceStudioPage() {
                   <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
                     <span className="material-symbols-outlined text-[15px] text-white">mic</span>
                   </span>
-                  Return to Call
+                  {isZh ? '返回通话继续说' : 'Return to Call'}
                 </button>
               </div>
             </motion.section>

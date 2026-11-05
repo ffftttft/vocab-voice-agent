@@ -12,6 +12,29 @@ import type {
 } from '../lib/types'
 
 export type UiStateOverride = 'default' | 'loading' | 'empty' | 'error' | 'voice_ready' | 'completed'
+export type UiLang = 'zh' | 'en'
+
+export const ONBOARDING_STORAGE_KEY = 'pip_onboarding_seen_v1'
+export const ONBOARDING_CARD_DISMISSED_KEY = 'pip_onboarding_card_dismissed_v1'
+export const LANG_STORAGE_KEY = 'pip_ui_lang'
+
+function getInitialLang(): UiLang {
+  if (typeof window === 'undefined') return 'zh'
+  const saved = window.localStorage.getItem(LANG_STORAGE_KEY)
+  return saved === 'en' ? 'en' : 'zh'
+}
+
+function getInitialOnboardingOpen(): boolean {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('screen')) return false
+  return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== '1'
+}
+
+function getInitialOnboardingCardDismissed(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(ONBOARDING_CARD_DISMISSED_KEY) === '1'
+}
 
 export interface StageConfigState {
   provider: string
@@ -52,10 +75,16 @@ const DEFAULT_ERRORS_MD = `# 语言顽疾病历本
 
 interface AppStore {
   currentScreen: ScreenId
+  lang: UiLang
   darkMode: boolean
   uiStateMode: UiStateOverride
   loading: boolean
   error: string | null
+
+  // Onboarding state
+  onboardingOpen: boolean
+  onboardingStep: number
+  onboardingCardDismissed: boolean
 
   // Data from backend
   plan: PlanResponse | null
@@ -111,6 +140,12 @@ interface AppStore {
 
   // Actions
   navigate: (screen: ScreenId) => void
+  setLang: (lang: UiLang) => void
+  toggleLang: () => void
+  openOnboarding: (step?: number) => void
+  closeOnboarding: () => void
+  setOnboardingStep: (step: number) => void
+  dismissOnboardingCard: () => void
   toggleDarkMode: () => void
   setUiStateMode: (mode: UiStateOverride) => void
   setAutoAudio: (v: boolean) => void
@@ -140,7 +175,12 @@ interface AppStore {
   runMemoryCompaction: () => Promise<void>
 
   setActiveRouterStage: (stage: 1 | 2 | 3) => void
-  adjustQuota: (key: 'daily_new_words' | 'daily_review_limit', delta: number, min: number, max: number) => void
+  adjustQuota: (
+    key: 'daily_new_words' | 'daily_review_limit',
+    delta: number,
+    min: number,
+    max: number,
+  ) => void
   updateStageField: (
     stage: 'realtime_voice' | 'text_llm' | 'tts',
     key: keyof StageConfigState,
@@ -151,10 +191,15 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   currentScreen: '01-today-studio',
+  lang: getInitialLang(),
   darkMode: false,
   uiStateMode: 'default',
   loading: false,
   error: null,
+
+  onboardingOpen: getInitialOnboardingOpen(),
+  onboardingStep: 0,
+  onboardingCardDismissed: getInitialOnboardingCardDismissed(),
 
   plan: {
     plan_date: new Date().toISOString().slice(0, 10),
@@ -254,6 +299,46 @@ export const useAppStore = create<AppStore>((set, get) => ({
       url.searchParams.set('screen', screen)
       window.history.replaceState({}, '', url.toString())
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    }
+  },
+
+  setLang: (lang) => {
+    set({ lang })
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LANG_STORAGE_KEY, lang)
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
+    }
+  },
+
+  toggleLang: () => {
+    const next: UiLang = get().lang === 'zh' ? 'en' : 'zh'
+    get().setLang(next)
+    toast(next === 'zh' ? '已切换为中文界面' : 'Switched to English UI')
+  },
+
+  openOnboarding: (step = 0) => {
+    set({ onboardingOpen: true, onboardingStep: step, onboardingCardDismissed: false })
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ONBOARDING_CARD_DISMISSED_KEY)
+    }
+  },
+
+  closeOnboarding: () => {
+    set({ onboardingOpen: false })
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+    }
+  },
+
+  setOnboardingStep: (step) => {
+    set({ onboardingStep: step })
+  },
+
+  dismissOnboardingCard: () => {
+    set({ onboardingCardDismissed: true, onboardingOpen: false })
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+      window.localStorage.setItem(ONBOARDING_CARD_DISMISSED_KEY, '1')
     }
   },
 
@@ -364,6 +449,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   regenerateDailyPlan: async () => {
+    const isZh = get().lang === 'zh'
     set({ loading: true, error: null })
     try {
       const planRes = await api.regeneratePlan()
@@ -381,18 +467,28 @@ export const useAppStore = create<AppStore>((set, get) => ({
           progress: queueRes?.progress ?? planRes.progress,
         },
       }))
-      toast.success('今日场景学习计划已生成', {
-        description: planRes.scenario_title || '已完成今日新词与复习词聚类',
+      toast.success(isZh ? '今日场景学习计划已生成' : 'Daily Scenario Plan Generated', {
+        description:
+          planRes.scenario_title ||
+          (isZh ? '已完成今日新词与复习词聚类' : 'Today’s new & review words are ready'),
       })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '请先导入词书并检查模型配置'
+      const msg =
+        err instanceof Error
+          ? err.message
+          : isZh
+            ? '请先导入词书并检查模型配置'
+            : 'Please import a wordbook and verify settings'
       set({ loading: false, error: msg })
-      toast.error('生成今日计划失败', { description: msg })
+      toast.error(isZh ? '生成今日计划失败' : 'Failed to generate daily plan', {
+        description: msg,
+      })
     }
   },
 
   submitCardChoice: async (label, durationMs) => {
-    const { cards, currentCardIndex } = get()
+    const { cards, currentCardIndex, lang } = get()
+    const isZh = lang === 'zh'
     const card = cards[currentCardIndex]
     if (!card) return
     set({ selectedOption: label, lastDurationMs: durationMs })
@@ -414,14 +510,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
         get().navigate('04-fsrs-sprint-wrong')
       }
     } catch (err) {
-      toast.error('提交答题结果失败', {
-        description: err instanceof Error ? err.message : '请检查网络连接',
+      toast.error(isZh ? '提交答题结果失败' : 'Failed to submit answer', {
+        description:
+          err instanceof Error
+            ? err.message
+            : isZh
+              ? '请检查网络连接'
+              : 'Please check your network connection',
       })
     }
   },
 
   overrideCardRating: async (rating) => {
-    const { cards, currentCardIndex, selectedOption, lastDurationMs } = get()
+    const { cards, currentCardIndex, selectedOption, lastDurationMs, lang } = get()
+    const isZh = lang === 'zh'
     const card = cards[currentCardIndex]
     if (!card) return
     try {
@@ -438,10 +540,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch {
       /* ignore */
     }
-    const labels: Record<number, string> = { 2: 'Hard', 3: 'Good', 4: 'Easy' }
-    toast.success(`FSRS 评级已更新 → ${labels[rating]}`, {
-      description: `已更新 "${card.word}" 的记忆稳定性曲线`,
-    })
+    const labelsZh: Record<number, string> = { 2: '模糊 (2)', 3: '良好 (3)', 4: '秒杀 (4)' }
+    const labelsEn: Record<number, string> = { 2: 'Hard (2)', 3: 'Good (3)', 4: 'Easy (4)' }
+    toast.success(
+      isZh
+        ? `FSRS 评级已更新 → ${labelsZh[rating]}`
+        : `FSRS Rating Updated → ${labelsEn[rating]}`,
+      {
+        description: isZh
+          ? `已更新 "${card.word}" 的记忆稳定性曲线`
+          : `Updated memory stability for "${card.word}"`,
+      },
+    )
     get().nextSprintCard()
   },
 
@@ -470,11 +580,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   importWordbookFile: async (file) => {
+    const isZh = get().lang === 'zh'
     try {
       const res = await api.importWordbook(file)
-      toast.success(`已从 ${file.name} 导入 ${res.imported} 个单词`, {
-        description: `跳过 ${res.skipped} 个重复词 · FSRS 记忆卡片已初始化`,
-      })
+      toast.success(
+        isZh
+          ? `已从 ${file.name} 导入 ${res.imported} 个单词`
+          : `Imported ${res.imported} words from ${file.name}`,
+        {
+          description: isZh
+            ? `跳过 ${res.skipped} 个重复词 · FSRS 记忆卡片已初始化`
+            : `Skipped ${res.skipped} duplicates · FSRS cards initialized`,
+        },
+      )
       const [wordsRes, statsRes] = await Promise.all([
         api.wordsAndMistakes().catch(() => null),
         api.stats().catch(() => null),
@@ -487,21 +605,36 @@ export const useAppStore = create<AppStore>((set, get) => ({
         stats: statsRes ?? s.stats,
       }))
     } catch (err) {
-      toast.error('词书导入失败', {
-        description: err instanceof Error ? err.message : '请检查 JSON / CSV 文件格式',
+      toast.error(isZh ? '词书导入失败' : 'Wordbook import failed', {
+        description:
+          err instanceof Error
+            ? err.message
+            : isZh
+              ? '请检查 JSON / CSV 文件格式'
+              : 'Please check your JSON / CSV format',
       })
     }
   },
 
   setVoicePersona: (persona) => {
+    const isZh = get().lang === 'zh'
     set({ voicePersona: persona })
-    toast.success(`音色已切换 → ${persona}`)
+    toast.success(isZh ? `音色已切换 → ${persona}` : `Voice switched → ${persona}`)
   },
 
   toggleMicMute: () => {
+    const isZh = get().lang === 'zh'
     const next = !get().isMuted
     set({ isMuted: next })
-    toast(next ? '麦克风已静音' : '麦克风已开启 (16kHz PCM)')
+    toast(
+      next
+        ? isZh
+          ? '麦克风已静音'
+          : 'Microphone muted'
+        : isZh
+          ? '麦克风已开启 (16kHz PCM)'
+          : 'Microphone active (16kHz PCM)',
+    )
   },
 
   triggerNewHintAngle: () => {
@@ -563,7 +696,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   insertMarkdownSnippet: (snippet) => {
-    const { activeMemoryDoc, userProfileMd, errorPatternsMd } = get()
+    const { activeMemoryDoc, userProfileMd, errorPatternsMd, lang } = get()
+    const isZh = lang === 'zh'
     const current = activeMemoryDoc === 'user_profile' ? userProfileMd : errorPatternsMd
     const updated = `${current.trimEnd()}\n${snippet}`
     if (activeMemoryDoc === 'user_profile') {
@@ -571,37 +705,61 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } else {
       set({ errorPatternsMd: updated })
     }
-    toast.success(`已插入到 ${activeMemoryDoc}.md`)
+    toast.success(
+      isZh ? `已插入到 ${activeMemoryDoc}.md` : `Inserted into ${activeMemoryDoc}.md`,
+    )
   },
 
   saveActiveMemory: async () => {
-    const { activeMemoryDoc, userProfileMd, errorPatternsMd } = get()
+    const { activeMemoryDoc, userProfileMd, errorPatternsMd, lang } = get()
+    const isZh = lang === 'zh'
     const content = activeMemoryDoc === 'user_profile' ? userProfileMd : errorPatternsMd
     try {
       await api.updateMemory(activeMemoryDoc, content)
-      toast.success(`已保存 ${activeMemoryDoc}.md`, {
-        description: `${new Blob([content]).size} 字节已写入 /data/memory/`,
-      })
+      toast.success(
+        isZh ? `已保存 ${activeMemoryDoc}.md` : `Saved ${activeMemoryDoc}.md`,
+        {
+          description: isZh
+            ? `${new Blob([content]).size} 字节已写入 /data/memory/`
+            : `${new Blob([content]).size} bytes written to /data/memory/`,
+        },
+      )
     } catch (err) {
-      toast.error(`保存 ${activeMemoryDoc}.md 失败`, {
-        description: err instanceof Error ? err.message : '请检查网络连接',
-      })
+      toast.error(
+        isZh ? `保存 ${activeMemoryDoc}.md 失败` : `Failed to save ${activeMemoryDoc}.md`,
+        {
+          description:
+            err instanceof Error
+              ? err.message
+              : isZh
+                ? '请检查网络连接'
+                : 'Please check your network connection',
+        },
+      )
     }
   },
 
   runMemoryCompaction: async () => {
+    const isZh = get().lang === 'zh'
     try {
       const res = await api.compactMemory()
       set({
         userProfileMd: res.user_profile || get().userProfileMd,
         errorPatternsMd: res.error_patterns || get().errorPatternsMd,
       })
-      toast.success('记忆整理完成', {
-        description: '已更新 user_profile.md 与 error_patterns.md',
+      toast.success(isZh ? '记忆整理完成' : 'Memory Compaction Complete', {
+        description: isZh
+          ? '已更新 user_profile.md 与 error_patterns.md'
+          : 'Updated user_profile.md & error_patterns.md',
       })
     } catch (err) {
-      toast.error('记忆整理失败', {
-        description: err instanceof Error ? err.message : '请检查模型配置',
+      toast.error(isZh ? '记忆整理失败' : 'Memory compaction failed', {
+        description:
+          err instanceof Error
+            ? err.message
+            : isZh
+              ? '请检查模型配置'
+              : 'Please check model configuration',
       })
     }
   },
@@ -632,7 +790,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   saveAndHotReloadConfig: async () => {
-    const { studyPlanQuotas, modelStages } = get()
+    const { studyPlanQuotas, modelStages, lang } = get()
+    const isZh = lang === 'zh'
     try {
       const cleanStage = (st: StageConfigState) => ({
         provider: st.provider,
@@ -648,10 +807,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
         text_llm: cleanStage(modelStages.text_llm),
         tts: cleanStage(modelStages.tts),
       })
-      toast.success('学习与语音偏好已保存')
+      toast.success(isZh ? '学习与语音偏好已保存' : 'Study & voice preferences saved')
     } catch (err) {
-      toast.error('配置保存失败', {
-        description: err instanceof Error ? err.message : '请检查服务状态',
+      toast.error(isZh ? '配置保存失败' : 'Failed to save preferences', {
+        description:
+          err instanceof Error
+            ? err.message
+            : isZh
+              ? '请检查服务状态'
+              : 'Please check server status',
       })
     }
   },

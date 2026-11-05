@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { LangTogglePill } from '../components/ShellComponents'
 import { useAppStore } from '../store/useAppStore'
 
 export default function FsrsSprintPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
   const navigate = useAppStore((s) => s.navigate)
+  const lang = useAppStore((s) => s.lang)
   const cards = useAppStore((s) => s.cards)
   const currentCardIndex = useAppStore((s) => s.currentCardIndex)
   const selectedOption = useAppStore((s) => s.selectedOption)
@@ -23,6 +25,7 @@ export default function FsrsSprintPage() {
   const plan = useAppStore((s) => s.plan)
   const stats = useAppStore((s) => s.stats)
 
+  const isZh = lang === 'zh'
   const card = cards[currentCardIndex] ?? cards[0]
   const doneCount = plan?.progress.done ?? 0
   const totalCount = plan?.progress.total ?? cards.length
@@ -71,14 +74,16 @@ export default function FsrsSprintPage() {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            aria-label="Exit sprint"
+            aria-label={isZh ? '退出背词' : 'Exit sprint'}
             onClick={() => navigate('01-today-studio')}
-            className="w-11 h-11 rounded-full bg-white shadow-sm border border-[#EAE3D6] flex items-center justify-center text-[#1C202B] press-scale-sm"
+            className="w-10 h-10 rounded-full bg-white shadow-sm border border-[#EAE3D6] flex items-center justify-center text-[#1C202B] press-scale-sm"
           >
             <span className="material-symbols-outlined text-[19px]">close</span>
           </button>
-          <span className="font-mono text-xs text-[#8C857B]">FSRS Sprint</span>
-          <div className="w-11" />
+          <span className="font-mono text-xs text-[#8C857B]">
+            {isZh ? '闪卡背词' : 'FSRS Sprint'}
+          </span>
+          <LangTogglePill />
         </div>
 
         <div className="bg-[#EFE6D5] rounded-[28px] p-6 border border-[#E2D7C1] text-center space-y-3 shadow-sm">
@@ -88,12 +93,22 @@ export default function FsrsSprintPage() {
             className="w-14 h-14 rounded-full object-cover mx-auto border-2 border-white shadow-sm"
           />
           <h1 className="font-headline text-[22px] font-semibold text-[#1C202B]">
-            {(stats?.total ?? 0) === 0 ? '尚未导入词书' : '今日背词队列为空'}
+            {(stats?.total ?? 0) === 0
+              ? isZh
+                ? '尚未导入词书'
+                : 'No Wordbook Imported Yet'
+              : isZh
+                ? '今日背词队列为空'
+                : 'Sprint Queue Is Empty'}
           </h1>
           <p className="text-xs text-[#5A554C] leading-relaxed">
             {(stats?.total ?? 0) === 0
-              ? '请先在词库页导入 JSON 或 CSV 词书文件，再生成今日 FSRS 背词与口语练习队列。'
-              : '点击下方按钮生成今日场景学习计划，即可开始四选一极速刷词。'}
+              ? isZh
+                ? '请先在词书页导入 JSON 或 CSV 词书文件，再生成今日 FSRS 背词与口语练习队列。'
+                : 'Import a JSON or CSV wordbook first, then generate today’s FSRS review and speaking queue.'
+              : isZh
+                ? '点击下方按钮生成今日场景学习计划，即可开始四选一极速刷词。'
+                : 'Tap below to generate today’s scenario plan and start your 4-choice sprint.'}
           </p>
           <div className="pt-2 flex flex-col gap-2.5">
             {(stats?.total ?? 0) === 0 ? (
@@ -102,7 +117,7 @@ export default function FsrsSprintPage() {
                 onClick={() => navigate('06-wordbooks-tagging')}
                 className="w-full py-3.5 rounded-full bg-[#1C202B] text-white text-xs font-semibold press-scale shadow-md"
               >
-                前往导入词书 (.json / .csv) →
+                {isZh ? '前往导入词书 (.json / .csv) →' : 'Import Wordbook (.json / .csv) →'}
               </button>
             ) : (
               <button
@@ -110,7 +125,7 @@ export default function FsrsSprintPage() {
                 onClick={() => void regenerateDailyPlan()}
                 className="w-full py-3.5 rounded-full bg-[#1C202B] text-white text-xs font-semibold press-scale shadow-md"
               >
-                生成今日学习计划 →
+                {isZh ? '生成今日学习计划 →' : 'Generate Daily Plan →'}
               </button>
             )}
             <button
@@ -118,7 +133,7 @@ export default function FsrsSprintPage() {
               onClick={() => navigate('01-today-studio')}
               className="w-full py-3 rounded-full bg-white text-[#1C202B] text-xs font-semibold border border-[#DCD3C0] press-scale"
             >
-              返回 Today Studio
+              {isZh ? '返回今日工作台' : 'Back to Today Studio'}
             </button>
           </div>
         </div>
@@ -128,7 +143,9 @@ export default function FsrsSprintPage() {
     )
   }
 
-  const scenarioLabel = `SCENARIO: ${(plan?.scenario_title || 'DAILY CONTEXT').toUpperCase()}`
+  const scenarioLabel = isZh
+    ? `场景：${plan?.scenario_title || '日常语境'}`
+    : `SCENARIO: ${(plan?.scenario_title || 'DAILY CONTEXT').toUpperCase()}`
   const defPos = card.pos_defs?.[0]?.pos ?? ''
   const defText = card.pos_defs?.[0]?.def ?? ''
   const elapsedDisplaySec =
@@ -145,9 +162,9 @@ export default function FsrsSprintPage() {
           <nav className="w-full mt-1 mb-2 flex items-center justify-between gap-2 sprint-header">
             <button
               type="button"
-              aria-label="Exit sprint"
+              aria-label={isZh ? '退出背词' : 'Exit sprint'}
               onClick={() => navigate('01-today-studio')}
-              className="w-11 h-11 rounded-full bg-white shadow-sm border border-[#EAE3D6] flex items-center justify-center text-[#1C202B] press-scale-sm shrink-0"
+              className="w-10 h-10 rounded-full bg-white shadow-sm border border-[#EAE3D6] flex items-center justify-center text-[#1C202B] press-scale-sm shrink-0"
             >
               <span className="material-symbols-outlined text-[19px]">close</span>
             </button>
@@ -163,11 +180,11 @@ export default function FsrsSprintPage() {
                 <div className="flex items-center gap-1.5 text-[10px] font-mono font-medium">
                   <span className="text-[#6B5AED] flex items-center gap-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#9B8AFB]" />
-                    {newDone}N
+                    {isZh ? `${newDone}新` : `${newDone}N`}
                   </span>
                   <span className="text-[#2B579A] flex items-center gap-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#6A9AE2]" />
-                    {revDone}R
+                    {isZh ? `${revDone}复` : `${revDone}R`}
                   </span>
                 </div>
               </div>
@@ -177,33 +194,39 @@ export default function FsrsSprintPage() {
               </div>
             </div>
 
-            {/* Right: Timer Pill & Audio Mode Pill */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* Right: Timer Pill, Audio Toggle & Lang Toggle */}
+            <div className="flex items-center gap-1 shrink-0">
               <div
-                className="h-9 px-2.5 bg-[#FEF7EE] border border-[#FAD89A] rounded-full flex items-center gap-1 shadow-sm"
-                title="Speed-to-grade timer"
+                className="h-9 px-2 bg-[#FEF7EE] border border-[#FAD89A] rounded-full flex items-center gap-1 shadow-sm"
+                title={isZh ? '答题耗时计分' : 'Speed-to-grade timer'}
               >
-                <span className="material-symbols-outlined text-[15px] text-[#A66E14]">timer</span>
-                <span className="font-mono text-[12px] font-semibold text-[#A66E14] tabular-nums">
+                <span className="material-symbols-outlined text-[14px] text-[#A66E14]">timer</span>
+                <span className="font-mono text-[11.5px] font-semibold text-[#A66E14] tabular-nums">
                   {timerSec.toFixed(1)}s
                 </span>
               </div>
               <button
                 type="button"
-                aria-label="Toggle auto audio"
+                aria-label={isZh ? '切换自动朗读' : 'Toggle auto audio'}
                 onClick={() => {
                   setAutoAudio(!autoAudio)
-                  toast(autoAudio ? 'Auto Sentence Audio OFF' : 'Auto Sentence Audio ON (+600ms)')
+                  toast(
+                    autoAudio
+                      ? isZh
+                        ? '已关闭自动朗读'
+                        : 'Auto Sentence Audio OFF'
+                      : isZh
+                        ? '已开启自动朗读'
+                        : 'Auto Sentence Audio ON',
+                  )
                 }}
-                className="tap-target-expand h-9 px-2.5 bg-white border border-[#E5DECF] rounded-full flex items-center gap-1 text-[#1C202B] press-scale shadow-sm"
+                className="tap-target-expand h-9 px-2 bg-white border border-[#E5DECF] rounded-full flex items-center gap-0.5 text-[#1C202B] press-scale shadow-sm"
               >
-                <span className="material-symbols-outlined text-[16px] text-[#1C202B] fill-icon">
+                <span className="material-symbols-outlined text-[15px] text-[#1C202B] fill-icon">
                   {autoAudio ? 'volume_up' : 'volume_off'}
                 </span>
-                <span className="text-[11px] font-body font-semibold tracking-tight text-[#1C202B]">
-                  {autoAudio ? 'ON' : 'OFF'}
-                </span>
               </button>
+              <LangTogglePill />
             </div>
           </nav>
         </div>
@@ -223,7 +246,13 @@ export default function FsrsSprintPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-1.5">
                 <span className="bg-[#F0EDFF] text-[#6B5AED] text-[10.5px] font-body font-semibold px-2.5 py-0.5 rounded-full tracking-wide">
-                  {card.item_type === 'NEW' ? 'NEW WORD' : 'REVIEW'}
+                  {card.item_type === 'NEW'
+                    ? isZh
+                      ? '今日新词'
+                      : 'NEW WORD'
+                    : isZh
+                      ? '待复习'
+                      : 'REVIEW'}
                 </span>
                 {card.topic_tag && (
                   <span className="text-[11px] font-mono text-[#8C857B]">{card.topic_tag}</span>
@@ -232,7 +261,7 @@ export default function FsrsSprintPage() {
               {card.is_voice_target && (
                 <div className="bg-[#FFF4D6] text-[#A66E14] text-[10.5px] font-body font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
                   <span className="material-symbols-outlined text-[13px] fill-icon">mic</span>
-                  <span>Voice Target</span>
+                  <span>{isZh ? '口语目标词' : 'Voice Target'}</span>
                 </div>
               )}
             </div>
@@ -251,7 +280,7 @@ export default function FsrsSprintPage() {
               )}
               <button
                 type="button"
-                aria-label="Replay pronunciation"
+                aria-label={isZh ? '播放单词发音' : 'Replay pronunciation'}
                 onClick={() => void api.playSpeech(card.word)}
                 className="tap-target-expand h-8 pl-2.5 pr-3 bg-[#FFF8EB] border border-[#FAD89A] rounded-full flex items-center gap-2 text-[#A66E14] press-scale"
               >
@@ -262,7 +291,7 @@ export default function FsrsSprintPage() {
                   <span className="w-[2px] bg-[#F4B844] rounded-full wave-bar-gpu wave-bar-gpu-4" />
                 </div>
                 <span className="text-[11px] font-body font-semibold text-[#8A5A0A]">
-                  Play Word Audio
+                  {isZh ? '单词发音' : 'Play Word Audio'}
                 </span>
               </button>
             </div>
@@ -293,7 +322,7 @@ export default function FsrsSprintPage() {
                   className="tap-target-expand flex items-center gap-1 bg-white/80 text-[#7D7569] font-mono text-[10px] px-2.5 py-1 rounded-full press-scale border border-white/60 shrink-0"
                 >
                   <span className="material-symbols-outlined text-[12px]">headphones</span>
-                  <span>Sentence Audio</span>
+                  <span>{isZh ? '例句朗读' : 'Sentence Audio'}</span>
                 </button>
               )}
             </div>
@@ -311,7 +340,9 @@ export default function FsrsSprintPage() {
                 </>
               ) : (
                 <span className="italic text-[#5A554C]">
-                  请从下方四个同词性中文释义中选择 “{card.word}” 的正确含义。
+                  {isZh
+                    ? `请从下方四个同词性释义中选择 “${card.word}” 的正确含义。`
+                    : `Choose the correct meaning of “${card.word}” from the four options below.`}
                 </span>
               )}
             </p>
@@ -319,7 +350,9 @@ export default function FsrsSprintPage() {
             <div className="mt-2 bg-white/65 backdrop-blur-sm rounded-xl py-1 px-2.5 flex items-center justify-center gap-1.5 text-[10.5px] font-body text-[#7A7265] border border-white/50">
               <span className="material-symbols-outlined text-[13px] text-[#8C857B]">lock</span>
               <span className="truncate">
-                Chinese translation &amp; FSRS stability unlock after choosing
+                {isZh
+                  ? '选择答案后解锁例句译文与 FSRS 记忆稳定度'
+                  : 'Chinese translation & FSRS stability unlock after choosing'}
               </span>
             </div>
           </motion.section>
@@ -329,10 +362,12 @@ export default function FsrsSprintPage() {
         <section className="flex flex-col justify-end shrink-0 pt-1">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#8C857B]">
-              CHOOSE THE CORRECT MEANING{' '}
-              {card.options[0]?.pos ? `(POS: ${card.options[0].pos})` : ''}
+              {isZh ? '请选择正确释义' : 'CHOOSE THE CORRECT MEANING'}{' '}
+              {card.options[0]?.pos ? `(${card.options[0].pos})` : ''}
             </span>
-            <span className="font-mono text-[10px] text-[#A8A195]">SINGLE CHOICE</span>
+            <span className="font-mono text-[10px] text-[#A8A195]">
+              {isZh ? '四选一' : 'SINGLE CHOICE'}
+            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -357,18 +392,36 @@ export default function FsrsSprintPage() {
           {/* 6. Monospace Speed-to-Grade FSRS Footer */}
           <footer className="mt-2 pt-0.5 text-center select-none">
             <p className="font-mono text-[10px] text-[#8C857B] tracking-tight flex items-center justify-center gap-1.5 flex-wrap">
-              <span>
-                Answer &lt; 3.5s →{' '}
-                <strong className="font-medium text-[#236B42]">Auto Easy (4)</strong>
-              </span>
-              <span className="text-[#D3CBC0]">|</span>
-              <span>
-                3.5–8s → <strong className="font-medium text-[#2B579A]">Good (3)</strong>
-              </span>
-              <span className="text-[#D3CBC0]">|</span>
-              <span>
-                &gt; 8s → <strong className="font-medium text-[#A83825]">Hard (2)</strong>
-              </span>
+              {isZh ? (
+                <>
+                  <span>
+                    &lt; 3.5秒 → <strong className="font-medium text-[#236B42]">秒杀 (4)</strong>
+                  </span>
+                  <span className="text-[#D3CBC0]">|</span>
+                  <span>
+                    3.5–8秒 → <strong className="font-medium text-[#2B579A]">良好 (3)</strong>
+                  </span>
+                  <span className="text-[#D3CBC0]">|</span>
+                  <span>
+                    &gt; 8秒 → <strong className="font-medium text-[#A83825]">模糊 (2)</strong>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    Answer &lt; 3.5s →{' '}
+                    <strong className="font-medium text-[#236B42]">Auto Easy (4)</strong>
+                  </span>
+                  <span className="text-[#D3CBC0]">|</span>
+                  <span>
+                    3.5–8s → <strong className="font-medium text-[#2B579A]">Good (3)</strong>
+                  </span>
+                  <span className="text-[#D3CBC0]">|</span>
+                  <span>
+                    &gt; 8s → <strong className="font-medium text-[#A83825]">Hard (2)</strong>
+                  </span>
+                </>
+              )}
             </p>
           </footer>
         </section>
@@ -382,10 +435,16 @@ export default function FsrsSprintPage() {
   if (currentScreen === '03-fsrs-sprint-reveal') {
     const autoGradeLabel =
       lastReviewResult?.rating === 4
-        ? 'Easy (4)'
+        ? isZh
+          ? '秒杀 (4)'
+          : 'Easy (4)'
         : lastReviewResult?.rating === 3
-          ? 'Good (3)'
-          : 'Hard (2)'
+          ? isZh
+            ? '良好 (3)'
+            : 'Good (3)'
+          : isZh
+            ? '模糊 (2)'
+            : 'Hard (2)'
 
     return (
       <div
@@ -394,12 +453,12 @@ export default function FsrsSprintPage() {
       >
         <div className="px-4 pt-1 shrink-0">
           {/* 1. Top Header Row */}
-          <header className="flex items-center justify-between gap-2.5 pt-1 mb-1.5 sprint-header">
+          <header className="flex items-center justify-between gap-2 pt-1 mb-1.5 sprint-header">
             <button
               type="button"
-              aria-label="Exit Sprint"
+              aria-label={isZh ? '退出背词' : 'Exit Sprint'}
               onClick={() => navigate('01-today-studio')}
-              className="w-11 h-11 rounded-full bg-white border border-[#EBE4D8] flex items-center justify-center shadow-sm text-[#1C202B] press-scale-sm shrink-0"
+              className="w-10 h-10 rounded-full bg-white border border-[#EBE4D8] flex items-center justify-center shadow-sm text-[#1C202B] press-scale-sm shrink-0"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -409,7 +468,9 @@ export default function FsrsSprintPage() {
                 <span className="font-mono text-[11px] font-bold text-stone-600 tracking-wide tabular-nums">
                   {doneCount} / {totalCount}
                 </span>
-                <span className="font-mono text-[10px] text-stone-400 font-medium">Card Sprint</span>
+                <span className="font-mono text-[10px] text-stone-400 font-medium">
+                  {isZh ? '闪卡进度' : 'Card Sprint'}
+                </span>
               </div>
               <div className="w-full h-2 bg-[#E9E3D5] rounded-full overflow-hidden p-[1px] flex">
                 <div
@@ -421,8 +482,9 @@ export default function FsrsSprintPage() {
 
             <div className="bg-[#E6F5EC] border border-[#BFE6CE] text-[#236B42] font-mono font-bold text-[11px] px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-sm shrink-0">
               <span className="material-symbols-outlined text-[14px] text-[#236B42]">bolt</span>
-              <span>{elapsedDisplaySec}s · Correct</span>
+              <span>{isZh ? `${elapsedDisplaySec}秒 · 正确` : `${elapsedDisplaySec}s · Correct`}</span>
             </div>
+            <LangTogglePill />
           </header>
         </div>
 
@@ -443,7 +505,7 @@ export default function FsrsSprintPage() {
                   </h1>
                   <button
                     type="button"
-                    aria-label="Listen to pronunciation"
+                    aria-label={isZh ? '播放发音' : 'Listen to pronunciation'}
                     onClick={() => void api.playSpeech(card.word)}
                     className="tap-target-expand w-7 h-7 rounded-full bg-[#FCEFDA] text-[#9A6B1A] flex items-center justify-center press-scale-sm shadow-2xs"
                   >
@@ -459,7 +521,7 @@ export default function FsrsSprintPage() {
               {card.is_voice_target && (
                 <div className="bg-[#FFF6E5] text-[#9A6B1A] border border-[#F4D086] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
                   <span className="material-symbols-outlined text-[13px] fill-icon">star</span>
-                  <span>Voice Target</span>
+                  <span>{isZh ? '口语目标词' : 'Voice Target'}</span>
                 </div>
               )}
             </div>
@@ -468,7 +530,7 @@ export default function FsrsSprintPage() {
             <div className="mt-1.5 pt-1.5 border-t border-stone-100">
               <div className="flex items-start gap-2">
                 <span className="bg-[#F4EFE6] text-stone-700 font-mono text-[9.5px] font-bold px-1.5 py-0.5 rounded uppercase mt-0.5 shrink-0">
-                  DEF
+                  {isZh ? '释义' : 'DEF'}
                 </span>
                 <p className="font-sans text-[12.5px] leading-snug text-[#1C202B] font-medium line-clamp-1">
                   <span className="font-semibold text-stone-500">{defPos}</span> {defText}
@@ -496,15 +558,19 @@ export default function FsrsSprintPage() {
                 <span className="material-symbols-outlined text-[13px] text-[#2B579A]">
                   monitoring
                 </span>
-                <span className="font-bold">FSRS Rating: {autoGradeLabel}</span>
+                <span className="font-bold">
+                  {isZh ? `FSRS 评级：${autoGradeLabel}` : `FSRS Rating: ${autoGradeLabel}`}
+                </span>
               </div>
               <div className="tracking-tighter">
                 <span>
-                  Next Due:{' '}
+                  {isZh ? '下次复习：' : 'Next Due:'}{' '}
                   <strong className="font-semibold text-emerald-800">
                     {lastReviewResult?.next_due
                       ? lastReviewResult.next_due.slice(0, 10)
-                      : 'Scheduled'}
+                      : isZh
+                        ? '已排期'
+                        : 'Scheduled'}
                   </strong>
                 </span>
               </div>
@@ -531,7 +597,7 @@ export default function FsrsSprintPage() {
               </div>
               <button
                 type="button"
-                aria-label="Replay Sentence Audio"
+                aria-label={isZh ? '重播例句' : 'Replay Sentence Audio'}
                 onClick={() => void api.playSpeech(card.sentence_en ?? card.word)}
                 className="tap-target-expand w-7 h-7 rounded-full bg-white/75 text-stone-600 flex items-center justify-center press-scale-sm shadow-2xs shrink-0"
               >
@@ -581,7 +647,7 @@ export default function FsrsSprintPage() {
                     </div>
                     <div className="bg-[#58B37C] text-white text-[10px] font-bold font-sans px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0 ml-1">
                       <span className="material-symbols-outlined text-[12px]">check</span>
-                      <span>Correct ✓</span>
+                      <span>{isZh ? '回答正确 ✓' : 'Correct ✓'}</span>
                     </div>
                   </div>
                 )
@@ -611,10 +677,18 @@ export default function FsrsSprintPage() {
               <span className="material-symbols-outlined text-[13px] text-[#236B42]">
                 progress_activity
               </span>
-              <span>Answered in {elapsedDisplaySec}s</span>
+              <span>
+                {isZh ? `作答耗时 ${elapsedDisplaySec}秒` : `Answered in ${elapsedDisplaySec}s`}
+              </span>
             </div>
             <span className="font-bold text-[#1E5E3A] truncate">
-              {autoAdvancePaused ? 'Choose manual grade override' : `Auto-rated ${autoGradeLabel}`}
+              {autoAdvancePaused
+                ? isZh
+                  ? '可手动微调记忆评级'
+                  : 'Choose manual grade override'
+                : isZh
+                  ? `系统自动评级：${autoGradeLabel}`
+                  : `Auto-rated ${autoGradeLabel}`}
             </span>
           </div>
 
@@ -632,7 +706,7 @@ export default function FsrsSprintPage() {
                   : 'bg-[#F4F0E8] text-[#5C5549] border-[#E3DCCE]'
               }`}
             >
-              Hard · 模糊
+              {isZh ? '模糊 (2)' : 'Hard (2)'}
             </button>
             <button
               type="button"
@@ -646,7 +720,7 @@ export default function FsrsSprintPage() {
                   : 'bg-[#F4F0E8] text-[#5C5549] border-[#E3DCCE]'
               }`}
             >
-              Good · 良好
+              {isZh ? '良好 (3)' : 'Good (3)'}
             </button>
             <button
               type="button"
@@ -660,18 +734,18 @@ export default function FsrsSprintPage() {
                   : 'bg-[#F4F0E8] text-[#5C5549] border border-[#E3DCCE] font-semibold'
               }`}
             >
-              Easy · 秒杀
+              {isZh ? '秒杀 (4)' : 'Easy (4)'}
             </button>
           </div>
 
           {/* Full-Width Primary Pill Action Button */}
           <button
             type="button"
-            aria-label="Proceed to Next Word"
+            aria-label={isZh ? '下一个单词' : 'Proceed to Next Word'}
             onClick={() => nextSprintCard()}
             className="sprint-cta-btn w-full h-11 min-h-[44px] bg-[#1C202B] text-white rounded-full font-sans font-semibold text-sm flex items-center justify-center gap-2 shadow-md press-scale"
           >
-            <span>Next Word</span>
+            <span>{isZh ? '下一个单词' : 'Next Word'}</span>
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
@@ -685,7 +759,9 @@ export default function FsrsSprintPage() {
   const wrongLabel = selectedOption
   const noteText =
     card.confusable_note ||
-    `请结合例句语境记忆 "${card.word}" (${card.phonetic_us || ''}) 的准确释义：${defPos} ${defText}`
+    (isZh
+      ? `请结合例句语境记忆 "${card.word}" (${card.phonetic_us || ''}) 的准确释义：${defPos} ${defText}`
+      : `Remember "${card.word}" (${card.phonetic_us || ''}) in context: ${defPos} ${defText}`)
 
   return (
     <motion.div
@@ -697,19 +773,19 @@ export default function FsrsSprintPage() {
       {/* Top Header & Requeue Banner */}
       <div className="px-4 pt-1 shrink-0">
         <div className="space-y-1.5 mt-1 mb-1.5 sprint-header">
-          <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
-              aria-label="Exit sprint"
+              aria-label={isZh ? '退出背词' : 'Exit sprint'}
               onClick={() => navigate('01-today-studio')}
-              className="w-11 h-11 rounded-full bg-white/90 border border-stone-200/90 flex items-center justify-center text-stone-600 shadow-sm press-scale-sm shrink-0"
+              className="w-10 h-10 rounded-full bg-white/90 border border-stone-200/90 flex items-center justify-center text-stone-600 shadow-sm press-scale-sm shrink-0"
             >
               <span className="material-symbols-outlined text-[19px]">close</span>
             </button>
 
             <div className="flex-1 px-1">
               <div className="flex items-center justify-between mb-1 text-[11px] font-semibold text-stone-500 font-label">
-                <span className="tracking-wide">Sprint Progress</span>
+                <span className="tracking-wide">{isZh ? '背词进度' : 'Sprint Progress'}</span>
                 <span className="font-mono text-stone-700 text-[11px] tabular-nums">
                   {doneCount} / {totalCount}
                 </span>
@@ -728,9 +804,12 @@ export default function FsrsSprintPage() {
                 sync_problem
               </span>
               <span>
-                Requeue #{lastReviewResult?.requeue_count ?? card.requeue_count + 1}
+                {isZh
+                  ? `重排 #${lastReviewResult?.requeue_count ?? card.requeue_count + 1}`
+                  : `Requeue #${lastReviewResult?.requeue_count ?? card.requeue_count + 1}`}
               </span>
             </div>
+            <LangTogglePill />
           </div>
 
           {/* Requeue Lock Banner */}
@@ -739,8 +818,17 @@ export default function FsrsSprintPage() {
               error
             </span>
             <p className="text-[11px] leading-[15px] font-medium tracking-tight">
-              <span className="font-bold">Locked as Again (Rating 1)</span> • Pushed to end of
-              today&apos;s queue until answered correctly.
+              {isZh ? (
+                <>
+                  <span className="font-bold">已锁定为重来 (评级 1)</span> ·
+                  已排入今日队尾，直到答对为止。
+                </>
+              ) : (
+                <>
+                  <span className="font-bold">Locked as Again (Rating 1)</span> • Pushed to end of
+                  today&apos;s queue until answered correctly.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -780,14 +868,16 @@ export default function FsrsSprintPage() {
                 <span className="w-[2px] bg-[#E5735D] rounded-full wave-bar-gpu wave-bar-gpu-3" />
                 <span className="w-[2px] bg-[#E5735D] rounded-full wave-bar-gpu wave-bar-gpu-4" />
               </div>
-              <span className="text-[10px] font-medium text-stone-600">Replay</span>
+              <span className="text-[10px] font-medium text-stone-600">
+                {isZh ? '重播发音' : 'Replay'}
+              </span>
             </button>
           </div>
 
           <div className="mt-1 pb-1.5 border-b border-stone-100 flex items-center justify-between gap-2">
             <p className="text-[12px] leading-snug font-medium text-stone-800 truncate">
               <span className="font-semibold text-stone-500 font-mono text-[10.5px] mr-1">
-                DEF:
+                {isZh ? '释义：' : 'DEF:'}
               </span>
               {defPos} {defText}
             </p>
@@ -796,7 +886,7 @@ export default function FsrsSprintPage() {
               onClick={() => setConfusableExpanded(!confusableExpanded)}
               className="tap-target-expand shrink-0 bg-[#FFF8E6] border border-amber-300 text-amber-950 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5 press-scale"
             >
-              <span>记忆提示</span>
+              <span>{isZh ? '记忆提示' : 'Memory Note'}</span>
               <span className="material-symbols-outlined text-[12px]">
                 {confusableExpanded ? 'expand_less' : 'expand_more'}
               </span>
@@ -811,17 +901,19 @@ export default function FsrsSprintPage() {
                 src="/assets/pip-avatar.png"
               />
               <span className="font-bold text-[11px] text-amber-950 font-body">
-                Pip&apos;s Memory Note
+                {isZh ? 'Pip 的记忆笔记' : "Pip's Memory Note"}
               </span>
             </div>
             <p className="text-[11px] leading-snug text-amber-950/90">{noteText}</p>
           </div>
 
           <div className="font-mono text-[10px] text-[#A83825] bg-[#FCECE8]/70 border border-[#E5735D]/30 rounded-xl px-2.5 py-1 mt-1 flex items-center justify-between tracking-tight tabular-nums">
-            <span className="font-medium">Rating: Again (1)</span>
+            <span className="font-medium">
+              {isZh ? '评级：重来 (1)' : 'Rating: Again (1)'}
+            </span>
             <span className="text-stone-300">|</span>
             <span className="font-semibold uppercase tracking-wider text-[9.5px]">
-              State: Relearning
+              {isZh ? '状态：重学中' : 'State: Relearning'}
             </span>
           </div>
         </section>
@@ -845,7 +937,7 @@ export default function FsrsSprintPage() {
               className="tap-target-expand flex items-center gap-1 text-[10.5px] font-semibold text-stone-700 bg-white/70 px-2 py-0.5 rounded-full press-scale shrink-0"
             >
               <span className="material-symbols-outlined text-[13px]">volume_up</span>
-              <span>Listen</span>
+              <span>{isZh ? '朗读例句' : 'Listen'}</span>
             </button>
           </div>
 
@@ -891,7 +983,7 @@ export default function FsrsSprintPage() {
                   </div>
                   <span className="bg-[#58B37C] text-white text-[9.5px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0 ml-1">
                     <span className="material-symbols-outlined text-[11px]">check</span>
-                    <span>Correct Meaning</span>
+                    <span>{isZh ? '正确释义' : 'Correct Meaning'}</span>
                   </span>
                 </div>
               )
@@ -912,7 +1004,7 @@ export default function FsrsSprintPage() {
                   </div>
                   <span className="bg-[#E5735D] text-white text-[9.5px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0 ml-1">
                     <span className="material-symbols-outlined text-[11px]">close</span>
-                    <span>Your Choice</span>
+                    <span>{isZh ? '你的选择' : 'Your Choice'}</span>
                   </span>
                 </div>
               )
@@ -954,7 +1046,9 @@ export default function FsrsSprintPage() {
                   className="w-6 h-6 rounded-full object-cover"
                   src="/assets/pip-avatar.png"
                 />
-                <span className="font-bold text-xs text-amber-950">Pip&apos;s Memory Note</span>
+                <span className="font-bold text-xs text-amber-950">
+                  {isZh ? 'Pip 的记忆笔记' : "Pip's Memory Note"}
+                </span>
               </div>
               <span className="material-symbols-outlined text-[16px] text-amber-900">close</span>
             </div>
@@ -966,14 +1060,16 @@ export default function FsrsSprintPage() {
       {/* Section 5: Bottom Forced Review Dock */}
       <div className="pt-1.5 pb-3 px-4 bg-[#F9F6F0] z-30 flex flex-col items-center shrink-0 sprint-dock">
         <p className="text-[10.5px] text-stone-400 font-medium mb-1.5 tracking-tight text-center sprint-hide-compact">
-          Manual rating override is disabled on wrong answers (FSRS Again = 1 locked).
+          {isZh
+            ? '答错状态下不支持手动上调评级（固定为重来 = 1）。'
+            : 'Manual rating override is disabled on wrong answers (FSRS Again = 1 locked).'}
         </p>
         <button
           type="button"
           onClick={() => nextSprintCard()}
           className="sprint-cta-btn w-full bg-[#1C202B] text-white h-[48px] min-h-[44px] rounded-full font-semibold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(28,32,43,0.22)] press-scale"
         >
-          <span>Got It • Re-Queue for Later</span>
+          <span>{isZh ? '记住了 · 排入队尾稍后再考' : 'Got It • Re-Queue for Later'}</span>
           <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
         </button>
       </div>

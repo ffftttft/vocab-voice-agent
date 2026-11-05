@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { Toaster } from 'sonner'
+import { ContextualCoachmarkOverlay } from './components/OnboardingGuide'
 import {
   FloatingBottomDock,
   SINGLE_SCREEN_LOCKED,
@@ -21,6 +22,11 @@ export default function App() {
   const setUiStateMode = useAppStore((s) => s.setUiStateMode)
   const initBackendData = useAppStore((s) => s.initBackendData)
   const darkMode = useAppStore((s) => s.darkMode)
+  const lang = useAppStore((s) => s.lang)
+
+  useEffect(() => {
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
+  }, [lang])
 
   useEffect(() => {
     void initBackendData()
@@ -107,6 +113,7 @@ export default function App() {
         </AnimatePresence>
 
         <FloatingBottomDock />
+        <ContextualCoachmarkOverlay />
         <Toaster
           position="top-center"
           toastOptions={{

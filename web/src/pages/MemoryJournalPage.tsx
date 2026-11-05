@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
+import { LangTogglePill } from '../components/ShellComponents'
 import { api } from '../lib/api'
 import { useAppStore } from '../store/useAppStore'
 
@@ -22,6 +23,7 @@ function stripHtmlComments(md: string): string {
 export default function MemoryJournalPage() {
   const currentScreen = useAppStore((s) => s.currentScreen)
   const navigate = useAppStore((s) => s.navigate)
+  const lang = useAppStore((s) => s.lang)
   const stats = useAppStore((s) => s.stats)
   const plan = useAppStore((s) => s.plan)
   const mistakes = useAppStore((s) => s.mistakes)
@@ -45,6 +47,8 @@ export default function MemoryJournalPage() {
   const [unsavedEdits, setUnsavedEdits] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
 
+  const isZh = lang === 'zh'
+
   // ============================================================================
   // SCREEN 13: DUAL-LAYER MARKDOWN MEMORY EDITOR
   // ============================================================================
@@ -65,7 +69,10 @@ export default function MemoryJournalPage() {
         .map((l) => l.trim())
         .filter((l) => l && !l.startsWith('#'))
         .slice(0, 2)
-        .join(' · ') || '点击切换查看或编辑该记忆文档'
+        .join(' · ') ||
+      (isZh
+        ? '点击切换查看或编辑该记忆文档'
+        : 'Tap to switch and edit this memory file')
 
     return (
       <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] flex flex-col relative overflow-x-hidden">
@@ -73,39 +80,52 @@ export default function MemoryJournalPage() {
         <header className="px-5 pt-2 pb-3 flex items-center justify-between gap-2 z-40">
           <button
             type="button"
-            aria-label="Go back to Memory Journal"
+            aria-label={isZh ? '返回记忆日志' : 'Go back to Memory Journal'}
             onClick={() => navigate('12-memory-journal')}
-            className="w-11 h-11 rounded-full bg-white border border-stone-200/70 shadow-sm flex items-center justify-center text-[#1C202B] press-scale"
+            className="w-10 h-10 rounded-full bg-white border border-stone-200/70 shadow-sm flex items-center justify-center text-[#1C202B] press-scale"
           >
             <span className="material-symbols-outlined text-xl">chevron_left</span>
           </button>
 
           <div className="text-center">
             <h1 className="font-body font-bold text-[17px] text-[#1C202B] tracking-tight">
-              Pip&apos;s Long-Term Memory
+              {isZh ? 'Pip 长期记忆档案' : "Pip's Long-Term Memory"}
             </h1>
           </div>
 
-          <div
-            className={`text-[11px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 border shadow-2xs ${
-              unsavedEdits
-                ? 'bg-[#FFF4D6] text-[#946300] border-[#F4E0A8]'
-                : 'bg-[#E6F5EC] text-[#246B44] border-[#CFEDDA]'
-            }`}
-          >
-            <span className="relative flex h-2 w-2">
-              <span
-                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  unsavedEdits ? 'bg-[#F4B844]' : 'bg-[#58B37C]'
-                }`}
-              />
-              <span
-                className={`relative inline-flex rounded-full h-2 w-2 ${
-                  unsavedEdits ? 'bg-[#F4B844]' : 'bg-[#58B37C]'
-                }`}
-              />
-            </span>
-            <span>{justSaved ? 'Saved ✓' : unsavedEdits ? 'Unsaved' : `Synced · ${kbSize} KB`}</span>
+          <div className="flex items-center gap-1.5">
+            <LangTogglePill />
+            <div
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 border shadow-2xs ${
+                unsavedEdits
+                  ? 'bg-[#FFF4D6] text-[#946300] border-[#F4E0A8]'
+                  : 'bg-[#E6F5EC] text-[#246B44] border-[#CFEDDA]'
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    unsavedEdits ? 'bg-[#F4B844]' : 'bg-[#58B37C]'
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    unsavedEdits ? 'bg-[#F4B844]' : 'bg-[#58B37C]'
+                  }`}
+                />
+              </span>
+              <span>
+                {justSaved
+                  ? isZh
+                    ? '已保存 ✓'
+                    : 'Saved ✓'
+                  : unsavedEdits
+                    ? isZh
+                      ? '未保存'
+                      : 'Unsaved'
+                    : `${kbSize} KB`}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -128,7 +148,9 @@ export default function MemoryJournalPage() {
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-              <span className="truncate">user_profile.md</span>
+              <span className="truncate">
+                {isZh ? '用户画像 user_profile.md' : 'user_profile.md'}
+              </span>
             </button>
             <button
               type="button"
@@ -141,8 +163,9 @@ export default function MemoryJournalPage() {
                   : 'text-[#665E55] font-medium'
               }`}
             >
-              <span className="truncate">error_patterns.md</span>
-              <span className="text-[10px] opacity-75 font-sans font-normal">(Top 15)</span>
+              <span className="truncate">
+                {isZh ? '易错病历 error_patterns.md' : 'error_patterns.md'}
+              </span>
             </button>
           </div>
 
@@ -159,7 +182,7 @@ export default function MemoryJournalPage() {
                 </div>
                 <div>
                   <p className="font-body font-bold text-[#1C202B] text-[13px] leading-tight">
-                    Dual-Layer Plaintext Memory
+                    {isZh ? '双层纯文本记忆架构' : 'Dual-Layer Plaintext Memory'}
                   </p>
                   <p className="font-mono text-[10.5px] text-[#8C857B] leading-none mt-0.5">
                     /data/memory/
@@ -178,7 +201,7 @@ export default function MemoryJournalPage() {
                       : 'text-stone-500 font-medium'
                   }`}
                 >
-                  Structured
+                  {isZh ? '结构化视图' : 'Structured'}
                 </button>
                 <button
                   type="button"
@@ -189,13 +212,15 @@ export default function MemoryJournalPage() {
                       : 'text-stone-500 font-medium'
                   }`}
                 >
-                  Raw .md
+                  {isZh ? '源码编辑' : 'Raw .md'}
                 </button>
               </div>
             </div>
 
             <p className="font-body text-[12px] text-[#5D554B] leading-relaxed">
-              注入 Daily Planner 与实时语音会话的真实 Markdown 记忆文件，可随时直接编辑保存。
+              {isZh
+                ? '注入每日场景生成与实时语音会话的真实 Markdown 记忆文件，可随时直接编辑保存。'
+                : 'Plaintext Markdown memory files injected into the Daily Planner and live voice sessions.'}
             </p>
           </section>
 
@@ -214,7 +239,7 @@ export default function MemoryJournalPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    insertMarkdownSnippet('## 新增语境备注')
+                    insertMarkdownSnippet(isZh ? '## 新增语境备注' : '## Context Note')
                     setUnsavedEdits(true)
                   }}
                   className="tap-target-expand bg-[#F5F2EA] text-stone-700 text-[11px] font-mono px-2.5 py-1 rounded-md border border-[#E8E2D4] press-scale"
@@ -230,14 +255,14 @@ export default function MemoryJournalPage() {
                   }}
                   className="tap-target-expand bg-[#F5F2EA] text-stone-700 text-[11px] font-mono px-2.5 py-1 rounded-md border border-[#E8E2D4] press-scale"
                 >
-                  - Bullet
+                  {isZh ? '- 列表' : '- Bullet'}
                 </button>
                 <button
                   type="button"
                   onClick={() => void runMemoryCompaction()}
                   className="tap-target-expand bg-[#FFF9EC] text-[#B87B14] text-[11px] font-body font-semibold px-2.5 py-1 rounded-md border border-[#F4DCAC] flex items-center gap-0.5 press-scale"
                 >
-                  <span>Auto-Compact</span>
+                  <span>{isZh ? '智能整理' : 'Auto-Compact'}</span>
                   <span className="text-xs">✦</span>
                 </button>
               </div>
@@ -250,7 +275,9 @@ export default function MemoryJournalPage() {
                   htmlFor="markdown-memory-textarea"
                   className="block text-[11px] font-mono text-[#8C857B]"
                 >
-                  Direct Plaintext Editor ({activeMemoryDoc}.md):
+                  {isZh
+                    ? `直接编辑纯文本 (${activeMemoryDoc}.md)：`
+                    : `Direct Plaintext Editor (${activeMemoryDoc}.md):`}
                 </label>
                 <textarea
                   id="markdown-memory-textarea"
@@ -269,7 +296,11 @@ export default function MemoryJournalPage() {
                 className="relative min-h-[240px] font-mono text-[12px] leading-relaxed text-[#2C2723] space-y-2 cursor-text"
               >
                 {visibleLines.length === 0 ? (
-                  <p className="text-stone-400 italic">暂无内容，点击此处进入编辑模式…</p>
+                  <p className="text-stone-400 italic">
+                    {isZh
+                      ? '暂无内容，点击此处进入编辑模式…'
+                      : 'Empty file. Tap here to start editing...'}
+                  </p>
                 ) : (
                   visibleLines.map((line, idx) => {
                     if (line.startsWith('# ')) {
@@ -325,9 +356,9 @@ export default function MemoryJournalPage() {
             {/* Editor footer status bar */}
             <div className="pt-2.5 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] font-mono text-stone-400 select-none tabular-nums">
               <div className="flex items-center gap-2">
-                <span>Lines: {lineCount}</span>
+                <span>{isZh ? `行数: ${lineCount}` : `Lines: ${lineCount}`}</span>
                 <span className="text-stone-300">·</span>
-                <span>Chars: {charCount}</span>
+                <span>{isZh ? `字符: ${charCount}` : `Chars: ${charCount}`}</span>
                 <span className="text-stone-300">·</span>
                 <span>UTF-8</span>
               </div>
@@ -358,7 +389,7 @@ export default function MemoryJournalPage() {
                 </span>
               </div>
               <div className="text-[11.5px] font-body font-semibold text-stone-600 flex items-center gap-0.5">
-                <span>Switch</span>
+                <span>{isZh ? '切换文档' : 'Switch'}</span>
                 <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </div>
             </div>
@@ -379,7 +410,7 @@ export default function MemoryJournalPage() {
             className="flex-1 bg-[#EFECE4] text-[#1C202B] font-body font-semibold text-[12.5px] py-3.5 min-h-[48px] rounded-full border border-[#DDD6C8] flex items-center justify-center gap-1.5 shadow-sm press-scale"
           >
             <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
-            <span>Run Compaction</span>
+            <span>{isZh ? '智能整理记忆' : 'Run Compaction'}</span>
           </button>
           <button
             type="button"
@@ -392,7 +423,7 @@ export default function MemoryJournalPage() {
             className="flex-[1.4] bg-[#1C202B] text-white font-body font-semibold text-[12.5px] py-3.5 min-h-[48px] rounded-full shadow-md flex items-center justify-center gap-2 press-scale"
           >
             <span className="material-symbols-outlined text-[16px] text-emerald-400">save</span>
-            <span>Save {activeMemoryDoc}.md</span>
+            <span>{isZh ? `保存 ${activeMemoryDoc}.md` : `Save ${activeMemoryDoc}.md`}</span>
           </button>
         </div>
       </div>
@@ -413,13 +444,17 @@ export default function MemoryJournalPage() {
     setPlayingClipId(null)
   }
 
+  const dayNamesZh = ['日', '一', '二', '三', '四', '五', '六']
+  const dayNamesEn = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const dayNames = isZh ? dayNamesZh : dayNamesEn
+
   const upcomingDays =
     stats?.upcoming && stats.upcoming.length === 7
       ? stats.upcoming.map((u, idx) => {
           const dt = new Date(`${u.date}T00:00:00`)
           const dayLetter = Number.isNaN(dt.getTime())
-            ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'][(new Date().getDay() + idx) % 7]
-            : ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dt.getDay()]
+            ? dayNames[(new Date().getDay() + idx) % 7]
+            : dayNames[dt.getDay()]
           return {
             day: dayLetter,
             date: u.date,
@@ -433,7 +468,7 @@ export default function MemoryJournalPage() {
           const dt = new Date()
           dt.setDate(dt.getDate() + idx)
           return {
-            day: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dt.getDay()],
+            day: dayNames[dt.getDay()],
             date: dt.toISOString().slice(0, 10),
             count: 0,
             emoji: DAY_EMOJIS[idx % DAY_EMOJIS.length],
@@ -450,32 +485,35 @@ export default function MemoryJournalPage() {
 
   return (
     <div className="min-h-dvh bg-[#F9F6F0] text-[#1C202B] relative flex flex-col pb-32 overflow-x-hidden">
-      {/* Header Row (Journal Title + Segmented Switcher) */}
+      {/* Header Row (Journal Title + Lang Toggle + Segmented Switcher) */}
       <div className="px-6 pt-2 pb-2 flex justify-between items-center">
         <div className="flex items-baseline space-x-2">
-          <h1 className="font-headline italic text-[#1C202B] text-[34px] leading-tight font-normal">
-            Journal
+          <h1 className="font-headline italic text-[#1C202B] text-[32px] leading-tight font-normal">
+            {isZh ? '记忆与诊所' : 'Journal'}
           </h1>
         </div>
-        <div className="flex items-center bg-[#EFECE4] p-1 rounded-full shadow-inner">
-          <button
-            type="button"
-            onClick={() => setPeriodTab('week')}
-            className={`font-body text-xs font-semibold px-3.5 py-1.5 min-h-[36px] rounded-full press-scale tap-target-expand ${
-              periodTab === 'week' ? 'bg-white text-[#1C202B] shadow-sm' : 'text-[#8C857B]'
-            }`}
-          >
-            Week
-          </button>
-          <button
-            type="button"
-            onClick={() => setPeriodTab('month')}
-            className={`font-body text-xs font-semibold px-3 py-1.5 min-h-[36px] rounded-full press-scale tap-target-expand ${
-              periodTab === 'month' ? 'bg-white text-[#1C202B] shadow-sm' : 'text-[#8C857B]'
-            }`}
-          >
-            Month
-          </button>
+        <div className="flex items-center gap-1.5">
+          <LangTogglePill />
+          <div className="flex items-center bg-[#EFECE4] p-1 rounded-full shadow-inner">
+            <button
+              type="button"
+              onClick={() => setPeriodTab('week')}
+              className={`font-body text-xs font-semibold px-3 py-1 min-h-[34px] rounded-full press-scale tap-target-expand ${
+                periodTab === 'week' ? 'bg-white text-[#1C202B] shadow-sm' : 'text-[#8C857B]'
+              }`}
+            >
+              {isZh ? '按周' : 'Week'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPeriodTab('month')}
+              className={`font-body text-xs font-semibold px-3 py-1 min-h-[34px] rounded-full press-scale tap-target-expand ${
+                periodTab === 'month' ? 'bg-white text-[#1C202B] shadow-sm' : 'text-[#8C857B]'
+              }`}
+            >
+              {isZh ? '按月' : 'Month'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -497,14 +535,18 @@ export default function MemoryJournalPage() {
                 auto_awesome
               </span>
               <span className="text-[#236B42] text-[12px] font-semibold">
-                {mistakes.length} Recasts
+                {isZh ? `${mistakes.length} 条纠错` : `${mistakes.length} Recasts`}
               </span>
             </div>
           </div>
           <h2 className="font-headline text-[18px] font-bold text-[#1C202B] tracking-tight leading-snug">
             {mistakes.length === 0
-              ? 'Zero linguistic mistakes logged so far'
-              : `${mistakes.length} spoken repairs captured in Clinic`}
+              ? isZh
+                ? '目前尚无口语纠错记录'
+                : 'Zero linguistic mistakes logged so far'
+              : isZh
+                ? `错题诊所共收录 ${mistakes.length} 条口语表达修正`
+                : `${mistakes.length} spoken repairs captured in Clinic`}
           </h2>
 
           {/* 7 Expressive 3D Clay Droplet Character Days */}
@@ -513,7 +555,13 @@ export default function MemoryJournalPage() {
               <button
                 key={d.date + i}
                 type="button"
-                onClick={() => toast(`${d.date} · ${d.count} FSRS reviews scheduled`)}
+                onClick={() =>
+                  toast(
+                    isZh
+                      ? `${d.date} · 预计 ${d.count} 个单词待复习`
+                      : `${d.date} · ${d.count} FSRS reviews scheduled`,
+                  )
+                }
                 className="flex flex-col items-center press-scale-sm min-h-[56px]"
               >
                 <div
@@ -557,16 +605,19 @@ export default function MemoryJournalPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-1.5">
-                <h3 className="font-body font-semibold text-sm text-[#1C202B]">A note from Pip</h3>
+                <h3 className="font-body font-semibold text-sm text-[#1C202B]">
+                  {isZh ? 'Pip 的记忆手记' : 'A note from Pip'}
+                </h3>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#F4B844]" />
               </div>
               <p className="text-xs text-[#7A7365] font-body truncate">
-                {plan?.plan_date ?? new Date().toISOString().slice(0, 10)} · Memory &amp; Clinic
+                {plan?.plan_date ?? new Date().toISOString().slice(0, 10)} ·{' '}
+                {isZh ? '个人画像与病历本' : 'Memory & Clinic'}
               </p>
             </div>
             <button
               type="button"
-              aria-label="Edit Memory"
+              aria-label={isZh ? '编辑记忆文档' : 'Edit Memory'}
               onClick={() => navigate('13-memory-editor')}
               className="w-11 h-11 rounded-full flex items-center justify-center text-[#7A7365] press-scale-sm"
             >
@@ -577,14 +628,20 @@ export default function MemoryJournalPage() {
           <blockquote className="font-headline italic text-[#1C202B] text-[19px] leading-snug tracking-tight">
             “
             {plan?.scenario_title
-              ? `今日场景：${plan.scenario_title}`
-              : profileBullets[0] || '你的双层 Markdown 记忆画像已同步就绪。'}
+              ? isZh
+                ? `今日场景：${plan.scenario_title}`
+                : `Today’s Scenario: ${plan.scenario_title}`
+              : isZh
+                ? profileBullets[0] || '你的双层 Markdown 记忆画像已同步就绪。'
+                : 'Your dual-layer Markdown memory files are synced and ready.'}
             ”
           </blockquote>
 
           <p className="font-body text-[13px] text-[#5A554C] leading-relaxed mt-2.5">
             {plan?.scenario_brief ||
-              '每次完成语音对话后，夜间 Compaction 会将你的工作背景更新至 user_profile.md，并将高频发音或语法薄弱点整理至 error_patterns.md。'}
+              (isZh
+                ? '每次完成语音对话后，记忆整理功能会将你的工作背景更新至 user_profile.md，并将高频发音或语法薄弱点整理至 error_patterns.md。'
+                : 'After each voice session, memory compaction updates your background in user_profile.md and summarizes recurring weak spots into error_patterns.md.')}
           </p>
 
           <div className="grid grid-cols-2 gap-2.5 mt-4 pt-1">
@@ -594,7 +651,7 @@ export default function MemoryJournalPage() {
               className="h-11 min-h-[44px] rounded-full bg-[#1C202B] text-white font-body font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-sm press-scale"
             >
               <span className="material-symbols-outlined text-sm text-[#F4B844]">mic</span>
-              <span>Voice Studio</span>
+              <span>{isZh ? '进入口语工作台' : 'Voice Studio'}</span>
             </button>
             <button
               type="button"
@@ -602,7 +659,7 @@ export default function MemoryJournalPage() {
               className="h-11 min-h-[44px] rounded-full bg-[#E2D7C1] text-[#3F3A30] font-body font-semibold text-xs flex items-center justify-center space-x-1 press-scale"
             >
               <span className="material-symbols-outlined text-sm text-[#5A554C]">code</span>
-              <span>Edit Memory (.md)</span>
+              <span>{isZh ? '编辑记忆 (.md)' : 'Edit Memory (.md)'}</span>
             </button>
           </div>
         </motion.section>
@@ -613,14 +670,16 @@ export default function MemoryJournalPage() {
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="font-body font-bold text-base text-[#1C202B] tracking-tight">
-                  Linguistic Mistake Clinic
+                  {isZh ? '口语错题诊所' : 'Linguistic Mistake Clinic'}
                 </h2>
                 <span className="bg-[#FCECE8] text-[#A83825] text-[12px] font-mono font-bold px-2.5 py-0.5 rounded-full border border-[#FFCDD2]">
-                  {mistakes.length} Recasts Logged
+                  {isZh ? `共 ${mistakes.length} 条记录` : `${mistakes.length} Recasts Logged`}
                 </span>
               </div>
               <p className="text-xs text-[#8C857B] font-body mt-0.5">
-                Non-blocking in-flow repairs from live voice sessions
+                {isZh
+                  ? '实时语音对话中自动捕捉的发音、语法与选词修正'
+                  : 'Non-blocking in-flow repairs from live voice sessions'}
               </p>
             </div>
           </div>
@@ -628,10 +687,13 @@ export default function MemoryJournalPage() {
           {/* Horizontal Pill Filters */}
           <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5">
             {[
-              { id: 'ALL' as const, label: `All (${mistakes.length})` },
-              { id: 'PRONUNCIATION' as const, label: 'Pronunciation' },
-              { id: 'GRAMMAR' as const, label: 'Grammar' },
-              { id: 'WORD_CHOICE' as const, label: 'Word Choice' },
+              {
+                id: 'ALL' as const,
+                label: isZh ? `全部 (${mistakes.length})` : `All (${mistakes.length})`,
+              },
+              { id: 'PRONUNCIATION' as const, label: isZh ? '发音重音' : 'Pronunciation' },
+              { id: 'GRAMMAR' as const, label: isZh ? '语法结构' : 'Grammar' },
+              { id: 'WORD_CHOICE' as const, label: isZh ? '地道选词' : 'Word Choice' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -651,7 +713,9 @@ export default function MemoryJournalPage() {
           {/* Mistake Cards List */}
           {uiStateMode === 'empty' || filteredMistakes.length === 0 ? (
             <div className="bg-[#E6F5EC] rounded-2xl p-4 border border-[#C8E6C9] text-[#236B42] text-xs font-medium leading-relaxed">
-              当前分类下暂无纠错记录。在实时语音通话中，Pip 捕捉到的发音、语法与选词修正会自动收录于此。
+              {isZh
+                ? '当前分类下暂无纠错记录。在实时语音通话中，Pip 捕捉到的发音、语法与选词修正会自动收录于此。'
+                : 'No mistake records in this category yet. Spoken pronunciation, grammar, and word-choice repairs are logged here automatically during voice calls.'}
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
@@ -668,7 +732,9 @@ export default function MemoryJournalPage() {
                   <div className="flex items-center justify-between">
                     <span className="bg-[#FCECE8] text-[#C84B31] font-mono text-[12px] tracking-wider uppercase font-bold px-2.5 py-0.5 rounded-full border border-[#FFCDD2]/60">
                       {item.mistake_type === 'PRONUNCIATION'
-                        ? 'PRONUNCIATION & STRESS'
+                        ? isZh
+                          ? '发音与重音'
+                          : 'PRONUNCIATION & STRESS'
                         : item.mistake_type}
                     </span>
                     <button
@@ -677,13 +743,15 @@ export default function MemoryJournalPage() {
                       className="tap-target-expand flex items-center space-x-1 text-xs font-body font-semibold text-[#1C202B] bg-[#F9F6F0] px-3 py-1.5 min-h-[36px] rounded-full border border-[#E8E2D7] press-scale"
                     >
                       <span className="material-symbols-outlined text-sm">volume_up</span>
-                      <span>Listen TTS</span>
+                      <span>{isZh ? '听正确发音' : 'Listen TTS'}</span>
                     </button>
                   </div>
 
                   {/* Strikethrough Original Sentence */}
                   <div className="bg-[#FFF8F7] border border-[#FADCD5] rounded-xl p-2.5 text-xs text-[#8C857B] font-body">
-                    <span className="text-[#E5735D] font-mono font-semibold mr-1.5">Spoken:</span>
+                    <span className="text-[#E5735D] font-mono font-semibold mr-1.5">
+                      {isZh ? '原句：' : 'Spoken:'}
+                    </span>
                     <span className="line-through decoration-[#E5735D] decoration-1 text-[#8C5850]">
                       “{item.user_original}”
                     </span>
@@ -715,7 +783,7 @@ export default function MemoryJournalPage() {
                     <div className="flex items-center space-x-2">
                       <button
                         type="button"
-                        aria-label="Play corrected pronunciation clip"
+                        aria-label={isZh ? '播放修正后发音' : 'Play corrected pronunciation clip'}
                         onClick={() => void handlePlayClinicAudio(item.id, item.corrected_version)}
                         className="w-11 h-11 rounded-full bg-[#1C202B] text-white flex items-center justify-center press-scale shadow-sm"
                       >
@@ -732,7 +800,7 @@ export default function MemoryJournalPage() {
                       onClick={() => navigate('07-voice-studio-lobby')}
                       className="tap-target-expand text-[12px] font-body font-medium text-[#5A554C] press-scale"
                     >
-                      Practice with Pip →
+                      {isZh ? '和 Pip 对练巩固 →' : 'Practice with Pip →'}
                     </button>
                   </div>
                 </motion.div>
@@ -746,10 +814,12 @@ export default function MemoryJournalPage() {
           <div className="flex items-baseline justify-between">
             <div>
               <h2 className="font-body font-bold text-base text-[#1C202B] tracking-tight">
-                Moments Pip will remember
+                {isZh ? 'Pip 记住的个人背景要点' : 'Moments Pip will remember'}
               </h2>
               <p className="text-xs text-[#8C857B] font-body">
-                Facts from /data/memory/user_profile.md
+                {isZh
+                  ? '同步自 /data/memory/user_profile.md'
+                  : 'Facts from /data/memory/user_profile.md'}
               </p>
             </div>
             <button
@@ -757,16 +827,21 @@ export default function MemoryJournalPage() {
               onClick={() => navigate('13-memory-editor')}
               className="tap-target-expand text-xs font-semibold text-[#1C202B] flex-shrink-0 ml-2 press-scale"
             >
-              Edit .md →
+              {isZh ? '编辑画像 →' : 'Edit .md →'}
             </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {(profileBullets.length >= 2
-              ? profileBullets.slice(0, 2)
+            {(isZh
+              ? profileBullets.length >= 2
+                ? profileBullets.slice(0, 2)
+                : [
+                    profileBullets[0] || '在 user_profile.md 中记录你的职业与口语目标',
+                    '在 user_profile.md 中记录你的学习偏好与近期动态',
+                  ]
               : [
-                  profileBullets[0] || '在 user_profile.md 中记录你的职业与口语目标',
-                  '在 user_profile.md 中记录你的学习偏好与近期动态',
+                  'Record your role & speaking goals in user_profile.md',
+                  'Record your learning preferences & recent topics in user_profile.md',
                 ]
             ).map((fact, idx) => (
               <button
@@ -785,7 +860,13 @@ export default function MemoryJournalPage() {
                       {idx === 0 ? 'bolt' : 'psychology'}
                     </span>
                     <span className="text-[11px] font-mono uppercase font-bold text-[#8C857B]">
-                      {idx === 0 ? 'Profile' : 'Preference'}
+                      {idx === 0
+                        ? isZh
+                          ? '身份背景'
+                          : 'Profile'
+                        : isZh
+                          ? '学习偏好'
+                          : 'Preference'}
                     </span>
                   </div>
                   <p className="font-headline italic text-[13px] text-[#1C202B] leading-snug line-clamp-3">
@@ -794,7 +875,7 @@ export default function MemoryJournalPage() {
                 </div>
                 <div className="mt-3 pt-2 border-t border-[#F2ECE1] flex items-center justify-between text-[11px] text-[#8C857B] font-mono w-full">
                   <span>user_profile.md</span>
-                  <span className="text-emerald-700">Synced</span>
+                  <span className="text-emerald-700">{isZh ? '已同步' : 'Synced'}</span>
                 </div>
               </button>
             ))}

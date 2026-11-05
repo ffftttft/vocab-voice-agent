@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { OnboardingCoreLoopCard } from '../components/OnboardingGuide'
+import { AnimatedNumber, LangTogglePill } from '../components/ShellComponents'
 import { useAppStore } from '../store/useAppStore'
-import { AnimatedNumber } from '../components/ShellComponents'
 
 const DAY_EMOJIS = ['☀️', '🌱', '💧', '✨', '🌸', '🍯', '🌿']
 const DAY_BGS = [
@@ -16,9 +17,14 @@ const DAY_BGS = [
   'bg-[#E6F5EC]',
 ]
 
-function formatShortRange(upcoming?: { date: string; offset: number; count: number }[]) {
+function formatShortRange(
+  upcoming: { date: string; offset: number; count: number }[] | undefined,
+  isZh: boolean,
+) {
   const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    isZh
+      ? `${d.getMonth() + 1}月${d.getDate()}日`
+      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   if (upcoming && upcoming.length >= 2) {
     const first = new Date(`${upcoming[0].date}T00:00:00`)
     const last = new Date(`${upcoming[upcoming.length - 1].date}T00:00:00`)
@@ -34,6 +40,8 @@ function formatShortRange(upcoming?: { date: string; offset: number; count: numb
 
 export default function TodayStudioPage() {
   const navigate = useAppStore((s) => s.navigate)
+  const lang = useAppStore((s) => s.lang)
+  const openOnboarding = useAppStore((s) => s.openOnboarding)
   const plan = useAppStore((s) => s.plan)
   const stats = useAppStore((s) => s.stats)
   const cards = useAppStore((s) => s.cards)
@@ -47,6 +55,7 @@ export default function TodayStudioPage() {
   const [modePill, setModePill] = useState<'sprint' | 'voice'>('sprint')
   const [playingWord, setPlayingWord] = useState<string | null>(null)
 
+  const isZh = lang === 'zh'
   const totalWords = stats?.total ?? 0
   const voiceTargets = cards.filter((c) => c.is_voice_target)
   const targetPreviewCards = (voiceTargets.length > 0 ? voiceTargets : cards).slice(0, 2)
@@ -69,13 +78,17 @@ export default function TodayStudioPage() {
       ? revTotal
       : (plan?.progress.review.done ?? 0)
 
+  const dayNamesZh = ['日', '一', '二', '三', '四', '五', '六']
+  const dayNamesEn = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const dayNames = isZh ? dayNamesZh : dayNamesEn
+
   const upcomingDays =
     stats?.upcoming && stats.upcoming.length === 7
       ? stats.upcoming.map((u, idx) => {
           const dt = new Date(`${u.date}T00:00:00`)
           const dayLetter = Number.isNaN(dt.getTime())
-            ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'][(new Date().getDay() + idx) % 7]
-            : ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dt.getDay()]
+            ? dayNames[(new Date().getDay() + idx) % 7]
+            : dayNames[dt.getDay()]
           return {
             day: dayLetter,
             date: u.date,
@@ -89,7 +102,7 @@ export default function TodayStudioPage() {
           const dt = new Date()
           dt.setDate(dt.getDate() + idx)
           return {
-            day: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dt.getDay()],
+            day: dayNames[dt.getDay()],
             date: dt.toISOString().slice(0, 10),
             count: 0,
             emoji: DAY_EMOJIS[idx % DAY_EMOJIS.length],
@@ -100,16 +113,22 @@ export default function TodayStudioPage() {
 
   const totalUpcomingDue = upcomingDays.reduce((acc, d) => acc + d.count, 0)
 
-  const profileSummaryLine =
+  const rawProfileLine =
     userProfileMd
       .split('\n')
       .map((l) => l.trim())
       .find((l) => l.startsWith('- '))
-      ?.replace(/^-\s*/, '') || 'Synced with /data/memory/user_profile.md'
+      ?.replace(/^-\s*/, '') || ''
+
+  const profileSummaryLine = isZh
+    ? rawProfileLine || '已关联个人记忆画像'
+    : rawProfileLine === '职业：程序员（软件开发者）' || !rawProfileLine
+      ? 'Role: Software Engineer · Personalized Memory'
+      : rawProfileLine
 
   async function handlePlayWord(word: string, sentence: string) {
     setPlayingWord(word)
-    toast(`Playing "${word}"`, { description: sentence })
+    toast(isZh ? `正在朗读 "${word}"` : `Playing "${word}"`, { description: sentence })
     await api.playSpeech(word)
     setPlayingWord(null)
   }
@@ -120,7 +139,7 @@ export default function TodayStudioPage() {
       style={{ paddingTop: 'max(14px, env(safe-area-inset-top, 14px))' }}
     >
       {/* Top Navigation Anchor */}
-      <div className="flex justify-between items-center w-full px-6 pt-1 pb-1.5 max-w-md mx-auto">
+      <div className="flex justify-between items-center w-full px-5 pt-1 pb-1.5 max-w-md mx-auto">
         <button
           type="button"
           onClick={() => navigate('12-memory-journal')}
@@ -134,17 +153,32 @@ export default function TodayStudioPage() {
             />
             <div className="absolute inset-0 ring-1 ring-inset ring-amber-300/40 rounded-full" />
           </div>
-          <span className="font-headline italic text-2xl font-normal text-[#1C202B]">Today</span>
+          <span className="font-headline italic text-2xl font-normal text-[#1C202B]">
+            {isZh ? '今日' : 'Today'}
+          </span>
         </button>
 
-        <button
-          type="button"
-          aria-label="Open Study & Voice Settings"
-          onClick={() => navigate('14-engine-router')}
-          className="w-11 h-11 rounded-full flex items-center justify-center text-[#1C202B] press-scale-sm"
-        >
-          <span className="material-symbols-outlined text-[22px]">tune</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => openOnboarding(0)}
+            className="h-9 px-2.5 rounded-full bg-[#FFF4D6] border border-[#F4E0A8] text-[#946300] text-[11px] font-semibold flex items-center gap-1 press-scale-sm shadow-2xs"
+          >
+            <span className="material-symbols-outlined text-[14px]">help</span>
+            <span>{isZh ? '新手引导' : 'Guide'}</span>
+          </button>
+
+          <LangTogglePill />
+
+          <button
+            type="button"
+            aria-label={isZh ? '打开学习与语音设置' : 'Open Study & Voice Settings'}
+            onClick={() => navigate('14-engine-router')}
+            className="w-9 h-9 rounded-full bg-white/80 border border-[#EBE4D8] flex items-center justify-center text-[#1C202B] press-scale-sm"
+          >
+            <span className="material-symbols-outlined text-[20px]">tune</span>
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content Canvas */}
@@ -158,10 +192,11 @@ export default function TodayStudioPage() {
         >
           <div>
             <span className="text-[12px] font-medium text-[#8C857B] tracking-wide block">
-              {plan?.plan_date ?? new Date().toISOString().slice(0, 10)} · Daily Plan
+              {plan?.plan_date ?? new Date().toISOString().slice(0, 10)} ·{' '}
+              {isZh ? '每日计划' : 'Daily Plan'}
             </span>
             <h1 className="font-headline text-[32px] leading-tight text-[#1C202B] font-medium tracking-tight">
-              Today Studio
+              {isZh ? '今日工作台' : 'Today Studio'}
             </h1>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -176,7 +211,7 @@ export default function TodayStudioPage() {
                     : 'text-[#78716C] font-medium'
                 }`}
               >
-                Sprint
+                {isZh ? '背词' : 'Sprint'}
               </button>
               <button
                 type="button"
@@ -190,7 +225,7 @@ export default function TodayStudioPage() {
                     : 'text-[#78716C] font-medium'
                 }`}
               >
-                Voice
+                {isZh ? '口语' : 'Voice'}
               </button>
             </div>
             {/* Honey Gold Real FSRS Stats Badge */}
@@ -203,7 +238,9 @@ export default function TodayStudioPage() {
                 auto_stories
               </span>
               <span>
-                {totalWords} words · {stats?.due ?? 0} due
+                {isZh
+                  ? `${totalWords} 词 · ${stats?.due ?? 0} 待复习`
+                  : `${totalWords} words · ${stats?.due ?? 0} due`}
               </span>
             </button>
           </div>
@@ -224,10 +261,12 @@ export default function TodayStudioPage() {
               />
               <div>
                 <div className="text-[14px] font-semibold text-[#1C202B]">
-                  Pip is crafting today’s scenario...
+                  {isZh ? 'Pip 正在为你编排今日口语场景…' : 'Pip is crafting today’s scenario...'}
                 </div>
                 <div className="text-[11px] font-mono text-[#7A7265]">
-                  Clustering due reviews + new words from your wordbook
+                  {isZh
+                    ? '正在聚拢词书中的待复习词与今日新词'
+                    : 'Clustering due reviews + new words from your wordbook'}
                 </div>
               </div>
             </div>
@@ -248,10 +287,12 @@ export default function TodayStudioPage() {
               className="w-14 h-14 rounded-full object-cover mx-auto border-2 border-white shadow-sm"
             />
             <h2 className="font-headline text-[21px] font-semibold text-[#1C202B]">
-              Welcome! Let’s plant your first wordbook
+              {isZh ? '欢迎！先种下你的第一本词书吧' : 'Welcome! Let’s plant your first wordbook'}
             </h2>
             <p className="text-xs text-[#5A554C] leading-relaxed">
-              Import a JSON or CSV vocabulary deck so Pip can cluster your daily scenario.
+              {isZh
+                ? '导入 JSON 或 CSV 词表文件，Pip 会自动为你聚拢每日口语练习场景。'
+                : 'Import a JSON or CSV vocabulary deck so Pip can cluster your daily scenario.'}
             </p>
             <div className="flex gap-2">
               <button
@@ -259,7 +300,7 @@ export default function TodayStudioPage() {
                 onClick={() => navigate('06-wordbooks-tagging')}
                 className="flex-1 py-3 rounded-full bg-[#1C202B] text-white text-xs font-semibold press-scale"
               >
-                Import Wordbook (.json / .csv) →
+                {isZh ? '导入词书 (.json / .csv) →' : 'Import Wordbook (.json / .csv) →'}
               </button>
             </div>
           </motion.section>
@@ -273,10 +314,14 @@ export default function TodayStudioPage() {
           >
             <div className="flex items-center gap-2 font-semibold text-xs">
               <span className="material-symbols-outlined text-[18px]">error</span>
-              <span>Daily Planner LLM Connection Timeout</span>
+              <span>
+                {isZh ? '每日计划生成连接超时' : 'Daily Planner LLM Connection Timeout'}
+              </span>
             </div>
             <p className="text-[11.5px] leading-relaxed">
-              Could not reach Stage 2 Text LLM endpoint. Check your configuration or retry.
+              {isZh
+                ? '未能连接文本模型服务，请检查设置或点击重试。'
+                : 'Could not reach Stage 2 Text LLM endpoint. Check your configuration or retry.'}
             </p>
             <div className="flex gap-2">
               <button
@@ -287,14 +332,14 @@ export default function TodayStudioPage() {
                 }}
                 className="px-4 py-2 rounded-full bg-[#1C202B] text-white text-xs font-semibold press-scale"
               >
-                Retry Generation
+                {isZh ? '重新生成' : 'Retry Generation'}
               </button>
               <button
                 type="button"
                 onClick={() => navigate('14-engine-router')}
                 className="px-4 py-2 rounded-full bg-white text-[#1C202B] text-xs font-semibold border border-[#E5735D]/40 press-scale"
               >
-                Open Settings
+                {isZh ? '打开设置' : 'Open Settings'}
               </button>
             </div>
           </motion.section>
@@ -309,18 +354,24 @@ export default function TodayStudioPage() {
         >
           <div className="flex justify-between items-center mb-1">
             <span className="text-[11px] text-[#8C857B] font-semibold tracking-wider uppercase font-mono">
-              {formatShortRange(stats?.upcoming)}
+              {formatShortRange(stats?.upcoming, isZh)}
             </span>
             <span className="text-[11px] font-mono text-[#58B37C] font-semibold bg-[#E6F5EC] px-2 py-0.5 rounded-full">
-              7d Due: {totalUpcomingDue}
+              {isZh ? `7日待复习: ${totalUpcomingDue}` : `7d Due: ${totalUpcomingDue}`}
             </span>
           </div>
           <h2 className="text-[17px] font-semibold text-[#1C202B] tracking-tight leading-snug mb-3">
             {totalWords === 0
-              ? 'Import a wordbook to start your 7-day FSRS schedule'
+              ? isZh
+                ? '先导入一本词书，开启你的 7 日 FSRS 记忆日程'
+                : 'Import a wordbook to start your 7-day FSRS schedule'
               : totalCount > 0
-                ? `Today’s progress: ${doneCount} / ${totalCount} cards completed`
-                : `${stats?.due ?? 0} due reviews · ${stats?.new ?? 0} new words available`}
+                ? isZh
+                  ? `今日学习进度：已完成 ${doneCount} / ${totalCount} 张闪卡`
+                  : `Today’s progress: ${doneCount} / ${totalCount} cards completed`
+                : isZh
+                  ? `当前待复习 ${stats?.due ?? 0} 词 · 可学新词 ${stats?.new ?? 0} 词`
+                  : `${stats?.due ?? 0} due reviews · ${stats?.new ?? 0} new words available`}
           </h2>
           {/* 7-Day Schedule Row */}
           <div className="flex justify-between items-center px-1 pt-1 pb-1">
@@ -328,7 +379,13 @@ export default function TodayStudioPage() {
               <button
                 key={item.date + idx}
                 type="button"
-                onClick={() => toast(`${item.date} · ${item.count} FSRS reviews scheduled`)}
+                onClick={() =>
+                  toast(
+                    isZh
+                      ? `${item.date} · 预计 ${item.count} 个单词待复习`
+                      : `${item.date} · ${item.count} FSRS reviews scheduled`,
+                  )
+                }
                 className="flex flex-col items-center gap-1 relative press-scale-sm min-w-[38px] min-h-[44px]"
               >
                 <div
@@ -357,6 +414,7 @@ export default function TodayStudioPage() {
 
         {/* 3. Featured Companion Briefing Card (Champagne Sand) */}
         <motion.section
+          data-tour="step-wordbook"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', duration: 0.4, bounce: 0, delay: 0.08 }}
@@ -373,7 +431,9 @@ export default function TodayStudioPage() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-[15px] font-semibold text-[#1C202B]">A briefing from Pip</h3>
+                  <h3 className="text-[15px] font-semibold text-[#1C202B]">
+                    {isZh ? '来自 Pip 的今日简报' : 'A briefing from Pip'}
+                  </h3>
                   <span className="w-2 h-2 rounded-full bg-[#58B37C]" />
                 </div>
                 <p className="text-[11px] text-[#7A7265] leading-tight mt-0.5 font-medium truncate">
@@ -386,7 +446,7 @@ export default function TodayStudioPage() {
                 type="button"
                 onClick={() => void regenerateDailyPlan()}
                 className="w-9 h-9 rounded-full bg-white/75 border border-[#D5C9B0] flex items-center justify-center text-[#3B352B] press-scale-sm shrink-0"
-                title="Generate or refresh today's plan"
+                title={isZh ? '生成或刷新今日计划' : "Generate or refresh today's plan"}
               >
                 <span className="material-symbols-outlined text-[17px]">refresh</span>
               </button>
@@ -399,7 +459,13 @@ export default function TodayStudioPage() {
               <span className="material-symbols-outlined text-[13px]">terminal</span>
               <span>
                 {plan?.scenario_title ||
-                  (totalWords > 0 ? '今日场景待生成' : '尚未导入词书')}
+                  (totalWords > 0
+                    ? isZh
+                      ? '今日场景待生成'
+                      : 'Scenario Ready to Generate'
+                    : isZh
+                      ? '尚未导入词书'
+                      : 'No Wordbook Imported Yet')}
               </span>
             </span>
           </div>
@@ -409,8 +475,12 @@ export default function TodayStudioPage() {
             “
             {plan?.scenario_brief ||
               (totalWords > 0
-                ? '词库已就绪。点击下方按钮，由 Pip 结合你的用户画像将今日待复习与新学词汇聚类为实战对话场景。'
-                : '欢迎来到 Today Studio！请先导入一份 JSON 或 CSV 词书，Pip 会为你初始化 FSRS 记忆卡片并规划每日口语场景。')}
+                ? isZh
+                  ? '词库已就绪。点击下方按钮，由 Pip 结合你的个人画像将今日待复习与新学词汇聚类为实战对话场景。'
+                  : 'Your wordbook is ready. Tap below to let Pip cluster your due reviews and new words into a realistic speaking scenario.'
+                : isZh
+                  ? '欢迎来到今日工作台！请先导入一份 JSON 或 CSV 词书，Pip 会为你初始化 FSRS 记忆卡片并规划每日口语场景。'
+                  : 'Welcome to Today Studio! Import a JSON or CSV wordbook first so Pip can initialize your FSRS memory cards and craft your daily speaking scenario.')}
             ”
           </p>
 
@@ -418,8 +488,17 @@ export default function TodayStudioPage() {
           <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#5E574B] mb-4 bg-white/40 px-3 py-1.5 rounded-xl border border-white/40 tabular-nums">
             <span className="material-symbols-outlined text-[14px] text-[#2B579A]">monitoring</span>
             <span>
-              <AnimatedNumber value={doneCount} /> / {totalCount} FSRS Cards Done ·{' '}
-              {voiceTargetCount} Voice Targets Queued
+              {isZh ? (
+                <>
+                  已完成 <AnimatedNumber value={doneCount} /> / {totalCount} 张闪卡 ·{' '}
+                  {voiceTargetCount} 个口语目标词待激活
+                </>
+              ) : (
+                <>
+                  <AnimatedNumber value={doneCount} /> / {totalCount} FSRS Cards Done ·{' '}
+                  {voiceTargetCount} Voice Targets Queued
+                </>
+              )}
             </span>
           </div>
 
@@ -435,14 +514,14 @@ export default function TodayStudioPage() {
                   <span className="material-symbols-outlined text-[16px] text-[#F4B844]">
                     upload_file
                   </span>
-                  <span>导入词书 (.json / .csv)</span>
+                  <span>{isZh ? '导入词书 (.json / .csv)' : 'Import Wordbook'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('13-memory-editor')}
                   className="bg-[#FDFBF7] text-[#1C202B] text-[13px] font-semibold py-3 px-4 rounded-full text-center border border-[#DCD3C0] press-scale flex items-center justify-center gap-1 min-h-[46px]"
                 >
-                  <span>记忆画像</span>
+                  <span>{isZh ? '记忆画像' : 'Memory Profile'}</span>
                 </button>
               </>
             ) : totalCount === 0 ? (
@@ -456,14 +535,22 @@ export default function TodayStudioPage() {
                   <span className="material-symbols-outlined text-[16px] text-[#F4B844]">
                     auto_awesome
                   </span>
-                  <span>{loading ? '生成中…' : '生成今日学习计划'}</span>
+                  <span>
+                    {loading
+                      ? isZh
+                        ? '正在生成…'
+                        : 'Generating...'
+                      : isZh
+                        ? '生成今日学习计划'
+                        : 'Generate Daily Plan'}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('06-wordbooks-tagging')}
                   className="bg-[#FDFBF7] text-[#1C202B] text-[13px] font-semibold py-3 px-4 rounded-full text-center border border-[#DCD3C0] press-scale flex items-center justify-center gap-1 min-h-[46px]"
                 >
-                  <span>词库管理</span>
+                  <span>{isZh ? '词库管理' : 'Manage Deck'}</span>
                 </button>
               </>
             ) : uiStateMode === 'voice_ready' ? (
@@ -473,7 +560,7 @@ export default function TodayStudioPage() {
                 className="flex-1 bg-[#1C202B] text-white text-[13px] font-semibold py-3 px-4 rounded-full text-center shadow-md press-scale flex items-center justify-center gap-1.5 min-h-[46px]"
               >
                 <span className="material-symbols-outlined text-[16px] text-[#F4B844]">mic</span>
-                <span>Start Live Voice Call →</span>
+                <span>{isZh ? '开启实时语音对话 →' : 'Start Live Voice Call →'}</span>
               </button>
             ) : uiStateMode === 'completed' ? (
               <button
@@ -481,7 +568,9 @@ export default function TodayStudioPage() {
                 onClick={() => navigate('11-session-wrapped')}
                 className="flex-1 bg-[#58B37C] text-white text-[13px] font-semibold py-3 px-4 rounded-full text-center shadow-md press-scale flex items-center justify-center gap-1.5 min-h-[46px]"
               >
-                <span>🎉 View Session Wrapped Recap →</span>
+                <span>
+                  {isZh ? '🎉 查看今日练习总结 →' : '🎉 View Session Wrapped Recap →'}
+                </span>
               </button>
             ) : (
               <>
@@ -490,8 +579,10 @@ export default function TodayStudioPage() {
                   onClick={() => navigate('02-fsrs-sprint-question')}
                   className="flex-1 bg-[#1C202B] text-white text-[13px] font-semibold py-3 px-4 rounded-full text-center shadow-md press-scale flex items-center justify-center gap-1.5 min-h-[46px]"
                 >
-                  <span>Start Sprint</span>
-                  <span className="text-[11px] font-mono opacity-70">({remainingCount} left)</span>
+                  <span>{isZh ? '开始背词' : 'Start Sprint'}</span>
+                  <span className="text-[11px] font-mono opacity-70">
+                    ({isZh ? `剩 ${remainingCount}` : `${remainingCount} left`})
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -499,12 +590,15 @@ export default function TodayStudioPage() {
                   className="flex-1 bg-[#FDFBF7] text-[#1C202B] text-[13px] font-semibold py-3 px-4 rounded-full text-center border border-[#DCD3C0] press-scale flex items-center justify-center gap-1 min-h-[46px]"
                 >
                   <span className="material-symbols-outlined text-[16px]">mic</span>
-                  <span>Voice Studio</span>
+                  <span>{isZh ? '口语练习' : 'Voice Studio'}</span>
                 </button>
               </>
             )}
           </div>
         </motion.section>
+
+        {/* Onboarding Core Loop & Interactive Sample Sandbox Card */}
+        <OnboardingCoreLoopCard />
 
         {/* 4. Section 'Today's Dual-Loop Pipeline' */}
         <motion.section
@@ -514,14 +608,17 @@ export default function TodayStudioPage() {
         >
           <div className="flex items-center justify-between mb-2 px-1">
             <h2 className="font-headline italic text-[17px] font-semibold text-[#1C202B]">
-              Today&apos;s Dual-Loop Pipeline
+              {isZh ? '今日双环学习流' : "Today's Dual-Loop Pipeline"}
             </h2>
-            <span className="text-[11px] font-mono text-[#8C857B]">FSRS + Active Voice</span>
+            <span className="text-[11px] font-mono text-[#8C857B]">
+              {isZh ? '间隔重复 + 实时口语' : 'FSRS + Active Voice'}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {/* Left Bento Card (Input Stage) */}
             <button
               type="button"
+              data-tour="step-sprint"
               onClick={() =>
                 totalCount > 0
                   ? navigate('02-fsrs-sprint-question')
@@ -532,7 +629,7 @@ export default function TodayStudioPage() {
               <div>
                 <div className="flex justify-between items-center">
                   <span className="bg-[#EEF4FF] text-[#3366CC] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
-                    FSRS SPRINT
+                    {isZh ? '闪卡背词' : 'FSRS SPRINT'}
                   </span>
                   <span className="material-symbols-outlined text-[15px] text-[#6A9AE2]">
                     psychology
@@ -542,7 +639,9 @@ export default function TodayStudioPage() {
                   {doneCount} / {totalCount}
                 </div>
                 <p className="text-[11px] font-mono text-[#78716C] mt-1 tabular-nums">
-                  {newDone}/{newTotal} New · {revDone}/{revTotal} Rev
+                  {isZh
+                    ? `${newDone}/${newTotal} 新词 · ${revDone}/${revTotal} 复习`
+                    : `${newDone}/${newTotal} New · ${revDone}/${revTotal} Rev`}
                 </p>
               </div>
               <div className="mt-3 w-full">
@@ -556,10 +655,16 @@ export default function TodayStudioPage() {
                 </div>
                 <div className="flex justify-between items-center mt-1.5">
                   <span className="text-[10px] font-medium text-[#8C857B]">
-                    {remainingCount} remaining
+                    {isZh ? `剩余 ${remainingCount}` : `${remainingCount} remaining`}
                   </span>
                   <span className="text-[10px] font-mono text-[#58B37C] font-semibold">
-                    {totalCount > 0 ? 'Ready' : 'No Queue'}
+                    {totalCount > 0
+                      ? isZh
+                        ? '已就绪'
+                        : 'Ready'
+                      : isZh
+                        ? '待生成'
+                        : 'No Queue'}
                   </span>
                 </div>
               </div>
@@ -568,23 +673,24 @@ export default function TodayStudioPage() {
             {/* Right Bento Card (Output Stage) */}
             <button
               type="button"
+              data-tour="step-voice"
               onClick={() => navigate('07-voice-studio-lobby')}
               className="bg-white rounded-[24px] p-3.5 border border-[#EBE4D8] shadow-xs flex flex-col justify-between text-left press-scale hover-lift"
             >
               <div>
                 <div className="flex justify-between items-center">
                   <span className="bg-[#FFF9EB] text-[#C4820A] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
-                    LIVE VOICE
+                    {isZh ? '实时口语' : 'LIVE VOICE'}
                   </span>
                   <span className="material-symbols-outlined text-[15px] text-[#F4B844]">
                     graphic_eq
                   </span>
                 </div>
                 <div className="font-headline font-bold text-[22px] text-[#1C202B] mt-1.5 leading-none">
-                  {voiceTargetCount} Words
+                  {isZh ? `${voiceTargetCount} 个目标词` : `${voiceTargetCount} Words`}
                 </div>
                 <p className="text-[11px] font-medium text-[#78716C] mt-1">
-                  Realtime · {voicePersona}
+                  {isZh ? `实时对练 · ${voicePersona}` : `Realtime · ${voicePersona}`}
                 </p>
               </div>
               <div className="mt-3 w-full">
@@ -596,10 +702,18 @@ export default function TodayStudioPage() {
                 </div>
                 <div className="flex justify-between items-center mt-1.5">
                   <span className="text-[10px] font-mono text-[#8C857B]">
-                    {studyPlanQuotas.voice_sliding_window_size}-word window
+                    {isZh
+                      ? `每轮 ${studyPlanQuotas.voice_sliding_window_size} 词滑窗`
+                      : `${studyPlanQuotas.voice_sliding_window_size}-word window`}
                   </span>
                   <span className="text-[10px] font-mono text-[#C4820A] font-semibold">
-                    {voiceTargetCount > 0 ? 'Active' : 'Standby'}
+                    {voiceTargetCount > 0
+                      ? isZh
+                        ? '已就绪'
+                        : 'Active'
+                      : isZh
+                        ? '待命'
+                        : 'Standby'}
                   </span>
                 </div>
               </div>
@@ -616,14 +730,14 @@ export default function TodayStudioPage() {
         >
           <div className="flex justify-between items-center mb-2.5 px-1">
             <h2 className="font-headline italic text-[17px] font-semibold text-[#1C202B]">
-              Target Words Ready to Bloom Tonight
+              {isZh ? '今晚待激活的口语目标词' : 'Target Words Ready to Bloom Tonight'}
             </h2>
             <button
               type="button"
               onClick={() => navigate('07-voice-studio-lobby')}
               className="text-[12px] font-medium text-[#8C857B] press-scale flex items-center gap-0.5 tap-target-expand"
             >
-              <span>See all {voiceTargetCount}</span>
+              <span>{isZh ? `查看全部 ${voiceTargetCount}` : `See all ${voiceTargetCount}`}</span>
               <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
             </button>
           </div>
@@ -631,10 +745,12 @@ export default function TodayStudioPage() {
           {targetPreviewCards.length === 0 ? (
             <div className="bg-white rounded-[24px] p-5 border border-[#EBE4D8] shadow-xs text-center space-y-2">
               <p className="font-headline italic text-[16px] text-[#1C202B]">
-                今日暂无待激活的口语目标词
+                {isZh ? '今日暂无待激活的口语目标词' : 'No voice target words queued for tonight yet'}
               </p>
               <p className="text-xs text-[#8C857B] leading-relaxed">
-                导入词书并生成今日场景计划后，系统会自动挑选核心目标词供晚间实时语音对话实战使用。
+                {isZh
+                  ? '导入词书并生成今日场景计划后，系统会自动挑选核心目标词供晚间实时语音对话实战使用。'
+                  : 'Once you import a wordbook and generate your daily plan, Pip selects target words for live speaking practice.'}
               </p>
             </div>
           ) : (
@@ -651,7 +767,10 @@ export default function TodayStudioPage() {
                     onClick={() =>
                       void handlePlayWord(
                         item.word,
-                        item.sentence_en ?? `Practice "${item.word}" in tonight's voice call.`,
+                        item.sentence_en ??
+                          (isZh
+                            ? `在今晚语音对话中练习 "${item.word}"`
+                            : `Practice "${item.word}" in tonight's voice call.`),
                       )
                     }
                     className="bg-white rounded-[24px] p-3.5 border border-[#EBE4D8] shadow-xs flex flex-col justify-between text-left press-scale"
@@ -684,7 +803,13 @@ export default function TodayStudioPage() {
                     </div>
                     <div className="mt-3 pt-1 border-t border-[#F5EFE6] flex items-center justify-between w-full">
                       <span className="text-[10px] font-mono text-[#8C857B]">
-                        {item.item_type === 'NEW' ? 'New Target' : 'Review Target'}
+                        {item.item_type === 'NEW'
+                          ? isZh
+                            ? '新词目标'
+                            : 'New Target'
+                          : isZh
+                            ? '复习目标'
+                            : 'Review Target'}
                       </span>
                       <span
                         className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
@@ -693,7 +818,13 @@ export default function TodayStudioPage() {
                             : 'text-[#58B37C] bg-[#E6F5EC]'
                         }`}
                       >
-                        {item.is_voice_target ? 'Voice Target' : 'Sprint'}
+                        {item.is_voice_target
+                          ? isZh
+                            ? '口语目标'
+                            : 'Voice Target'
+                          : isZh
+                            ? '闪卡'
+                            : 'Sprint'}
                       </span>
                     </div>
                   </button>
